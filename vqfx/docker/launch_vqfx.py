@@ -3,15 +3,9 @@
 import datetime
 import logging
 import os
-import random
 import re
 import signal
-import subprocess
 import sys
-import telnetlib
-import time
-
-import IPy
 
 import vrnetlab
 
@@ -36,12 +30,13 @@ logging.Logger.trace = trace
 
 
 class VQFX_vcp(vrnetlab.VM):
-    def __init__(self, username, password):
+    def __init__(self, username, password, conn_mode):
         for e in os.listdir("/"):
             if re.search("-re-.*.vmdk", e):
                 vrnetlab.run_command(["qemu-img", "create", "-b", "/" + e, "-f", "qcow", "/vcp.qcow2"])
         super(VQFX_vcp, self).__init__(username, password, disk_image="/vcp.qcow2", ram=2048)
         self.num_nics = 12
+        self.conn_mode = conn_mode
 
 
     def start(self):
@@ -183,7 +178,6 @@ class VQFX_vpfe(vrnetlab.VM):
         return res
 
 
-
     def start(self):
         # use parent class start() function
         super(VQFX_vpfe, self).start()
@@ -191,6 +185,13 @@ class VQFX_vpfe(vrnetlab.VM):
         vrnetlab.run_command(["brctl", "addif", "int_cp", "vpfe-int"])
         vrnetlab.run_command(["ip", "link", "set", "vpfe-int", "up"])
 
+
+    def gen_nics(self):
+        """
+        Override the parent's gen_nic function,
+        since dataplane interfaces are not to be created for VCP
+        """
+        return []
 
 
     def bootstrap_spin(self):
@@ -201,13 +202,13 @@ class VQFX_vpfe(vrnetlab.VM):
 
 
 class VQFX(vrnetlab.VR):
-    """ Juniper vMX router
+    """ Juniper vQFX router
     """
 
-    def __init__(self, username, password):
+    def __init__(self, username, password, conn_mode):
         super(VQFX, self).__init__(username, password)
 
-        self.vms = [ VQFX_vcp(username, password), VQFX_vpfe() ]
+        self.vms = [ VQFX_vcp(username, password, conn_mode), VQFX_vpfe() ]
 
         # set up bridge for connecting VCP with vFPC
         vrnetlab.run_command(["brctl", "addbr", "int_cp"])
@@ -221,7 +222,12 @@ if __name__ == '__main__':
     parser.add_argument('--trace', action='store_true', help='enable trace level logging')
     parser.add_argument('--username', default='vrnetlab', help='Username')
     parser.add_argument('--password', default='VR-netlab9', help='Password')
-    parser.add_argument('--install', action='store_true', help='Install vMX')
+    parser.add_argument('--install', action='store_true', help='Install vQFX')
+    parser.add_argument(
+        "--connection-mode",
+        default="tc",
+        help="Connection mode to use in the datapath",
+    )
     args = parser.parse_args()
 
     LOG_FORMAT = "%(asctime)s: %(module)-10s %(levelname)-8s %(message)s"
@@ -231,6 +237,6 @@ if __name__ == '__main__':
     logger.setLevel(logging.DEBUG)
     if args.trace:
         logger.setLevel(1)
-
-    vr = VQFX(args.username, args.password)
+    vrnetlab.boot_delay()
+    vr = VQFX(args.username, args.password, conn_mode=args.connection_mode)
     vr.start()
