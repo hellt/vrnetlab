@@ -81,6 +81,7 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 34,  # 24*10 + 8*25G + 2*100G (with connector)
+        "connector": {"type": "c1-100g", "ports": [33, 34]},
         "cp": {
             "min_ram": 3,
             "timos_line": "slot=A chassis=ixr-e card=cpm-ixr-e",
@@ -155,7 +156,7 @@ SROS_VARIANTS = {
     "ixr-e-small": {
         "deployment_model": "distributed",
         # control plane (CPM)
-        "max_nics": 18,
+        "max_nics": 18, # Note: vSIM supports max 8 NICs, up to 1/1/6
         "cp": {
             "min_ram": 3,
             "timos_line": "slot=A chassis=ixr-e card=imm14-10g-sfp++4-1g-tx",
@@ -195,6 +196,7 @@ SROS_VARIANTS = {
             integrated=True,
         ),
         "power": {"modules": {"ac/hv": 3, "dc": 4}},
+        "connector": {"type": "c1-100g"},
     },
     "sr-1s-macsec": {
         "deployment_model": "integrated",
@@ -207,11 +209,13 @@ SROS_VARIANTS = {
         /configure card 1 xiom x1 mda 1 mda-type ms16-100gb-sfpdd+4-100gb-qsfp28
          """,
         "power": {"modules": {"ac/hv": 3, "dc": 4}},
+        "connector": { "type": "c1-100g", "xiom": True }, # TODO derive XIOM flag from timos_line
     },
     "sr-2s": {
         "deployment_model": "distributed",
         "max_nics": 10,  # 8+2
         "power": {"modules": {"ac/hv": 3, "dc": 4}},
+        "connector": {"type": "c1-100g", "xiom": True},
         "cp": {
             "min_ram": 3,
             # The 7750 SR-2s uses an integrated switch fabric module (SFM) design
@@ -236,6 +240,7 @@ SROS_VARIANTS = {
         # control plane (CPM)
         "max_nics": 36,
         "power": {"modules": 10, "shelves": 2},
+        "connector": {"type": "c1-100g"},
         "cp": {
             "min_ram": 4,
             "timos_line": "slot=A chassis=SR-7s sfm=sfm2-s card=cpm2-s",
@@ -290,6 +295,7 @@ SROS_VARIANTS = {
         # control plane (CPM)
         "max_nics": 36,
         "power": {"modules": 10, "shelves": 2},
+        "connector": {"type": "c1-100g"},
         "cp": {
             "min_ram": 4,
             "timos_line": "slot=A chassis=SR-14s sfm=sfm-s card=cpm2-s",
@@ -326,6 +332,7 @@ SROS_VARIANTS = {
             mda="me12-100gb-qsfp28",
             integrated=True,
         ),
+        "connector": {"type": "c1-100g"},
     },
     "sr-1e": {
         "deployment_model": "distributed",
@@ -619,7 +626,7 @@ def gen_bof_config():
 
 
 class SROS_vm(vrnetlab.VM):
-    def __init__(self, username, password, ram, conn_mode, cpu=2, num=0):
+    def __init__(self, username, password, ram, conn_mode, cpu=2, num=0, port_count=0):
         super().__init__(username, password, disk_image="/sros.qcow2", num=num, ram=ram)
         self.nic_type = "virtio-net-pci"
         self.conn_mode = conn_mode
@@ -630,6 +637,7 @@ class SROS_vm(vrnetlab.VM):
             cpu = 2
         self.cpu = cpu
         self.qemu_args.extend(["-cpu", "host", "-smp", f"{cpu}"])
+        self.port_count = port_count  # Number of connected ports
 
     def bootstrap_spin(self):
         """This function should be called periodically to do work."""
@@ -669,6 +677,32 @@ class SROS_vm(vrnetlab.VM):
         self.spins += 1
 
         return
+
+    def configure_ports(self):
+        """
+        Enable all connected ports, provision connectors & enable LLDP
+        """
+        for p in range(1, self.port_count + 1):
+            portname = f"port 1/1/{p}"
+            # Some mda's use 1/1/c for breakout, on some ports
+            # XIOM: 1/x1/1/c[n]/1
+            if "connector" in self.variant:
+                conn = self.variant["connector"]
+                if "ports" not in conn or p in conn["ports"]:
+                    portname = f"port 1/{'x1/' if 'xiom' in conn else ''}1/c{p}"
+                    self.wait_write(
+                        f"/configure {portname} connector breakout {conn['type']}"
+                    )
+                    self.wait_write(f"/configure {portname} no shutdown")
+                    portname += "/1"  # Using only 1:1 breakout types
+
+            self.wait_write(
+                f"/configure {portname} ethernet lldp dest-mac nearest-bridge admin-status tx-rx"
+            )
+            self.wait_write(
+                f"/configure {portname} ethernet lldp dest-mac nearest-bridge tx-tlvs port-desc sys-name sys-desc"
+            )
+            self.wait_write(f"/configure {portname} no shutdown")
 
     def read_license(self):
         """Read the license file, if it exists, and extract the UUID and start
@@ -810,6 +844,9 @@ class SROS_vm(vrnetlab.VM):
             if "power" in self.variant:
                 self.configure_power(self.variant["power"])
 
+            # Enable connected ports including LLDP rx/tx
+            self.configure_ports()
+
             self.commitConfig()
 
             # configure bof
@@ -831,7 +868,7 @@ class SROS_integrated(SROS_vm):
     """Integrated VSR-SIM"""
 
     def __init__(
-        self, hostname, username, password, mode, num_nics, variant, conn_mode
+        self, hostname, username, password, mode, num_nics, variant, conn_mode, port_count
     ):
         ram: int = vrnetlab.getMem("integrated", variant.get("min_ram"))
         cpu: int = vrnetlab.getCpu("integrated", variant.get("cpu"))
@@ -842,6 +879,7 @@ class SROS_integrated(SROS_vm):
             cpu=cpu,
             ram=ram,
             conn_mode=conn_mode,
+            port_count=port_count,
         )
         self.mode = mode
         self.role = "integrated"
@@ -884,7 +922,7 @@ class SROS_integrated(SROS_vm):
 class SROS_cp(SROS_vm):
     """Control plane for distributed VSR-SIM"""
 
-    def __init__(self, hostname, username, password, mode, variant, conn_mode):
+    def __init__(self, hostname, username, password, mode, variant, conn_mode, port_count):
         # cp - control plane. role is used to create a separate overlay image name
         self.role = "cp"
 
@@ -897,6 +935,7 @@ class SROS_cp(SROS_vm):
             cpu=cpu,
             ram=ram,
             conn_mode=conn_mode,
+            port_count=port_count,
         )
         self.mode = mode
         self.num_nics = 0
@@ -1018,7 +1057,7 @@ class SROS_lc(SROS_vm):
 
 # SROS is main class for VSR-SIM
 class SROS(vrnetlab.VR):
-    def __init__(self, hostname, username, password, mode, variant_name, conn_mode):
+    def __init__(self, hostname, username, password, mode, variant_name, conn_mode, port_count):
         super().__init__(username, password)
 
         if variant_name.lower() in SROS_VARIANTS:
@@ -1029,7 +1068,7 @@ class SROS(vrnetlab.VR):
                     parse_variant_line(lc.get("timos_line", ""), lc)
                     for lc in variant["lcs"]
                 ]
-                variant["lsc"] = sort_lc_lines_by_slot(variant["lcs"])
+                variant["lcs"] = sort_lc_lines_by_slot(variant["lcs"])
         else:
             variant = parse_custom_variant(variant_name)
 
@@ -1065,6 +1104,7 @@ class SROS(vrnetlab.VR):
                     mode,
                     variant,
                     conn_mode,
+                    port_count=port_count,
                 )
             ]
 
@@ -1129,6 +1169,7 @@ class SROS(vrnetlab.VR):
                     variant["max_nics"],
                     variant,
                     conn_mode=conn_mode,
+                    port_count=port_count,
                 )
             ]
 
@@ -1309,5 +1350,6 @@ if __name__ == "__main__":
         mode=args.mode,
         variant_name=args.variant,
         conn_mode=args.connection_mode,
+        port_count=int(os.environ["CLAB_INTFS"]) if "CLAB_INTFS" in os.environ else 0,
     )
     ia.start(add_fwd_rules=False)
