@@ -1151,7 +1151,7 @@ class SROS(vrnetlab.VR):
             for cp in variant["cps"]:
                 cp_slot=cp.get("slot", None)
 
-                # If lc_slot does not exist the skip instantiation
+                # cp_slot sanity checks
                 if not cp_slot:
                     self.logger.warning(
                         f"No Slot information on following cp line defintion: {cp}"
@@ -1165,7 +1165,6 @@ class SROS(vrnetlab.VR):
                     continue
                 
                 if cp_slot not in ['A','B']:
-                    cp_slot = int(lc_slot)
                     self.logger.warning(
                         f"slot value format is not valid: {cp} Skip CP VM creation"
                     )
