@@ -560,7 +560,7 @@ def parse_custom_variant(cfg):
     }  # some default value for num nics if it is not provided in user cfg
 
     # parsing distributed custom variant
-    if "cp: " in cfg:
+    if "___" in cfg:
         variant["deployment_model"] = "distributed"
         variant["lcs"] = []
         variant["cps"] = []
