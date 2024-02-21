@@ -7,7 +7,6 @@ import re
 import shutil
 import signal
 import sys
-import threading
 from dataclasses import dataclass
 from typing import Dict
 
@@ -57,6 +56,8 @@ class SROSVersion:
 # SROS_VERSION global variable is used to store the SROS version components
 SROS_VERSION = SROSVersion(version="", major=0, minor=0, patch=0)
 
+#Once bootstrap completes on the Active CP VM, this global variable will be set to true so that Standby CP VM can abort the bootstrap process.
+CP_BOOTSTRAP_DONE = False 
 
 # line_card_config is a convenience function that generates line card definition strings
 def line_card_config(
@@ -644,19 +645,15 @@ def gen_bof_config():
 
 
 class SROS_vm(vrnetlab.VM):
-    def __init__(self, username, password, ram, conn_mode, cpu=2, num=0, shared_boostrap_event=None):
+    def __init__(self, username, password, ram, conn_mode, cpu=2, num=0):
         super().__init__(
             username,
             password,
             disk_image="/sros.qcow2",
             num=num,
             ram=ram,
-            driveif="virtio",
+            driveif="virtio"
         )
-        if shared_boostrap_event is None: # set dummy event object if None was passed
-            self.shared_bootstrap_event = threading.Event()
-        else:
-            self.shared_bootstrap_event = shared_boostrap_event
         self.nic_type = "virtio-net-pci"
         self.conn_mode = conn_mode
         self.uuid = "00000000-0000-0000-0000-000000000000"
@@ -696,7 +693,8 @@ class SROS_vm(vrnetlab.VM):
 
     def bootstrap_spin(self):
         """This function should be called periodically to do work."""
-        if self.shared_bootstrap_event.is_set():
+        global CP_BOOTSTRAP_DONE
+        if CP_BOOTSTRAP_DONE:
             self.logger.debug(f"Slot {self.slot}: Bypassing bootstrap because was completed on peer CP.")
             self.tn.close()
             self.running = True
@@ -716,7 +714,7 @@ class SROS_vm(vrnetlab.VM):
                 startup_time = datetime.datetime.now() - self.start_time
                 self.logger.info("Startup complete in: %s" % startup_time)
                 self.running = True
-                self.shared_bootstrap_event.set()
+                CP_BOOTSTRAP_DONE = True
                 return
 
             # no match, if we saw some output from the router it's probably
@@ -954,7 +952,7 @@ class SROS_integrated(SROS_vm):
 class SROS_cp(SROS_vm):
     """Control plane for distributed VSR-SIM"""
 
-    def __init__(self, hostname, username, password, mode, variant, conn_mode, cp_config, system_mac, shared_bootstrap_event):
+    def __init__(self, hostname, username, password, mode, variant, conn_mode, cp_config, system_mac):
         # cp - control plane. role is used to create a separate overlay image name
         self.role = "cp"
          
@@ -974,7 +972,6 @@ class SROS_cp(SROS_vm):
             ram=ram,
             conn_mode=conn_mode,
             num=vm_num,
-            shared_boostrap_event=shared_bootstrap_event
         )
         self.mode = mode
         self.num_nics = 0
@@ -1147,7 +1144,6 @@ class SROS(vrnetlab.VR):
             # CP VM instantiation
             cp_slot_tracker = []
             sys_mac = vrnetlab.gen_mac(0)
-            bstrap_e = threading.Event() #Login is only allowed on Active CP VM, therefore boostrap is to be done only there and set this to True once completes. This shared object is passed to all CP, so that Standby SROS_vm instance will know when bootstrap procedure is completed on Active.  
             for cp in variant["cps"]:
                 cp_slot=cp.get("slot", None)
 
@@ -1178,8 +1174,7 @@ class SROS(vrnetlab.VR):
                         variant,
                         conn_mode,
                         cp_config=cp,
-                        system_mac=sys_mac,
-                        shared_bootstrap_event=bstrap_e
+                        system_mac=sys_mac
                     )
                 )
                 
