@@ -8,7 +8,6 @@ import shutil
 import signal
 import sys
 from dataclasses import dataclass
-from collections import defaultdict
 from typing import Dict
 
 import vrnetlab
