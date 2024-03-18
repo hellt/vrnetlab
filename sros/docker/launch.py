@@ -8,6 +8,7 @@ import shutil
 import signal
 import sys
 from dataclasses import dataclass
+from collections import defaultdict
 from typing import Dict
 
 import vrnetlab
@@ -630,7 +631,6 @@ SROS_VARIANTS = {
 # SR OS Classic CLI common configuration
 SROS_CL_COMMON_CFG = """
 /configure system name {name}
-/configure system netconf no shutdown
 /configure system security profile \"administrative\" netconf base-op-authorization lock
 /configure system login-control ssh inbound-max-sessions 30
 /configure system management-interface yang-modules no nokia-modules
@@ -641,8 +641,6 @@ SROS_CL_COMMON_CFG = """
 /configure system grpc gnmi no shutdown
 /configure system grpc rib-api no shutdown
 /configure system grpc no shutdown
-/configure system netconf auto-config-save
-/configure system netconf no shutdown
 /configure system security profile "administrative" netconf base-op-authorization kill-session
 /configure system security profile "administrative" netconf base-op-authorization lock
 /configure system snmp packet-size 9216
@@ -655,6 +653,7 @@ SROS_CL_COMMON_CFG = """
 /configure system security snmp community "public" r version v2c
 """
 
+
 # SR OS Model-Driven CLI common configuration
 SROS_MD_COMMON_CFG = """
 /configure system name {name}
@@ -665,8 +664,6 @@ SROS_MD_COMMON_CFG = """
 /configure system grpc allow-unsecure-connection
 /configure system grpc gnmi auto-config-save true
 /configure system grpc rib-api admin-state enable
-/configure system management-interface netconf admin-state enable
-/configure system management-interface netconf auto-config-save true
 /configure system management-interface snmp packet-size 9216
 /configure system management-interface snmp streaming admin-state enable
 /configure system security user-params local-user user "admin" access console true
@@ -675,6 +672,27 @@ SROS_MD_COMMON_CFG = """
 /configure system security user-params local-user user "admin" access grpc true
 /configure system security snmp community "public" access-permissions r
 /configure system security snmp community "public" version v2c
+"""
+
+# in release 24 SR OS introduced an extra container "listen" in the netconf 
+# container. As both release 23 and 24 will continue to be fairly widely used
+# an adaptation has to be made to be able to generate both images along with the 
+# appropriate configuration for netconf to be enabled
+def return_specific_cfg(release):
+    if release <= 22:
+        """
+/configure system netconf auto-config-save
+/configure system netconf no shutdown
+"""
+    elif release > 22: 
+        return """
+/configure system management-interface netconf admin-state enable
+/configure system management-interface netconf auto-config-save true
+"""
+    else:
+        return """
+/configure system management-interface listen netconf admin-state enable
+/configure system management-interface listen netconf auto-config-save true
 """
 
 # to allow writing config to tftp location we needed to spin up a normal
@@ -1474,11 +1492,11 @@ def getDefaultConfig() -> str:
     """Returns the default configuration for the system based on the SR OS version.
     SR OS >=23 uses model-driven configuration, while SR OS <=22 uses classic configuration.
     """
-
     if SROS_VERSION.major <= 22:
-        return SROS_CL_COMMON_CFG
+        return SROS_CL_COMMON_CFG + return_specific_cfg(SROS_VERSION.major)
 
-    return SROS_MD_COMMON_CFG
+
+    return SROS_MD_COMMON_CFG + return_specific_cfg(SROS_VERSION.major)
 
 
 if __name__ == "__main__":
