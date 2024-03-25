@@ -632,9 +632,10 @@ SROS_CL_COMMON_CFG = """
 /configure system name {name}
 /configure system security profile \"administrative\" netconf base-op-authorization lock
 /configure system login-control ssh inbound-max-sessions 30
-/configure system management-interface yang-modules no nokia-modules
 /configure system management-interface yang-modules nokia-combined-modules
 /configure system management-interface yang-modules no base-r13-modules
+/configure system netconf auto-config-save
+/configure system netconf no shutdown
 /configure system grpc allow-unsecure-connection
 /configure system grpc gnmi auto-config-save
 /configure system grpc gnmi no shutdown
@@ -678,10 +679,13 @@ SROS_MD_COMMON_CFG = """
 # an adaptation has to be made to be able to generate both images along with the 
 # appropriate configuration for netconf to be enabled
 def return_specific_cfg(release):
-    if release <= 22:
-        """
-/configure system netconf auto-config-save
-/configure system netconf no shutdown
+    if release <= 20:
+        return """
+/configure system management-interface yang-modules no nokia-modules
+"""
+    elif release <= 22:
+        return """
+/configure system management-interface yang-modules no nokia-submodules
 """
     elif release > 22: 
         return """
