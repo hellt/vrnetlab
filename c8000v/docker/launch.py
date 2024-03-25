@@ -33,7 +33,7 @@ logging.Logger.trace = trace
 
 
 class C8000v_vm(vrnetlab.VM):
-    def __init__(self, username, password, install_mode=False):
+    def __init__(self, hostname, username, password, install_mode=False):
         disk_image = None
         for e in sorted(os.listdir("/")):
             if not disk_image and re.search(".qcow2$", e):
@@ -49,6 +49,7 @@ class C8000v_vm(vrnetlab.VM):
         super(C8000v_vm, self).__init__(username, password, disk_image=disk_image)
         self.nic_type = "vmxnet3"
         self.install_mode = install_mode
+        self.hostname = hostname
         self.num_nics = 9
 
         if self.install_mode:
@@ -144,7 +145,7 @@ class C8000v_vm(vrnetlab.VM):
         self.wait_write("enable", wait=">")
         self.wait_write("configure terminal", wait=">")
 
-        self.wait_write("hostname c8000v")
+        self.wait_write(f"hostname {self.hostname}")
         self.wait_write("username %s privilege 15 password %s" % (self.username, self.password))
         if int(self.version.split('.')[0]) >= 16:
            self.wait_write("ip domain name example.com")
@@ -173,9 +174,9 @@ class C8000v_vm(vrnetlab.VM):
 
 
 class C8000v(vrnetlab.VR):
-    def __init__(self, username, password):
+    def __init__(self, hostname, username, password):
         super(C8000v, self).__init__(username, password)
-        self.vms = [ C8000v_vm(username, password) ]
+        self.vms = [ C8000v_vm(hostname, username, password) ]
 
 
 class C8000v_installer(C8000v):
@@ -184,9 +185,9 @@ class C8000v_installer(C8000v):
         Will start the C8000v with a mounted iso to make sure that we get
         console output on serial, not vga.
     """
-    def __init__(self, username, password):
-        super(C8000v, self).__init__(username, password)
-        self.vms = [ C8000v_vm(username, password, install_mode=True)  ]
+    def __init__(self, hostname, username, password):
+        super(C8000v, self).__init__(hostname, username, password)
+        self.vms = [ C8000v_vm(hostname, username, password, install_mode=True)  ]
 
     def install(self):
         self.logger.info("Installing C8000v")
@@ -204,6 +205,7 @@ if __name__ == '__main__':
     parser.add_argument('--username', default='vrnetlab', help='Username')
     parser.add_argument('--password', default='VR-netlab9', help='Password')
     parser.add_argument('--install', action='store_true', help='Install C8000v')
+    parser.add_argument('--hostname', default='c8000v', help='Router hostname')
     args = parser.parse_args()
 
     LOG_FORMAT = "%(asctime)s: %(module)-10s %(levelname)-8s %(message)s"
@@ -215,8 +217,8 @@ if __name__ == '__main__':
         logger.setLevel(1)
 
     if args.install:
-        vr = C8000v_installer(args.username, args.password)
+        vr = C8000v_installer(args.hostname, args.username, args.password)
         vr.install()
     else:
-        vr = C8000v(args.username, args.password)
+        vr = C8000v(args.hostname, args.username, args.password)
         vr.start()
