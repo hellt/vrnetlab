@@ -632,7 +632,6 @@ SROS_CL_COMMON_CFG = """
 /configure system name {name}
 /configure system security profile \"administrative\" netconf base-op-authorization lock
 /configure system login-control ssh inbound-max-sessions 30
-/configure system management-interface yang-modules nokia-combined-modules
 /configure system management-interface yang-modules no base-r13-modules
 /configure system netconf auto-config-save
 /configure system netconf no shutdown
@@ -664,6 +663,7 @@ SROS_MD_COMMON_CFG = """
 /configure system grpc allow-unsecure-connection
 /configure system grpc gnmi auto-config-save true
 /configure system grpc rib-api admin-state enable
+/configure system management-interface netconf auto-config-save true
 /configure system management-interface snmp packet-size 9216
 /configure system management-interface snmp streaming admin-state enable
 /configure system security user-params local-user user "admin" access console true
@@ -682,20 +682,20 @@ def return_specific_cfg(release):
     if release <= 20:
         return """
 /configure system management-interface yang-modules no nokia-modules
+/configure system management-interface yang-modules nokia-combined-modules
 """
     elif release <= 22:
         return """
 /configure system management-interface yang-modules no nokia-submodules
+/configure system management-interface yang-modules nokia-combined-modules
 """
-    elif release > 22: 
+    elif release > 22 and release < 24:
         return """
 /configure system management-interface netconf admin-state enable
-/configure system management-interface netconf auto-config-save true
 """
     else:
         return """
-/configure system management-interface listen netconf admin-state enable
-/configure system management-interface listen netconf auto-config-save true
+/configure system management-interface netconf listen admin-state enable
 """
 
 # to allow writing config to tftp location we needed to spin up a normal
