@@ -689,7 +689,7 @@ def return_specific_cfg(release):
 /configure system management-interface yang-modules no nokia-submodules
 /configure system management-interface yang-modules nokia-combined-modules
 """
-    elif release > 22 and release < 24:
+    elif 22 < release < 24:
         return """
 /configure system management-interface netconf admin-state enable
 """
