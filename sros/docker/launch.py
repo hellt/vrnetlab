@@ -154,7 +154,7 @@ SROS_VARIANTS = {
     "ixr-x1": {
         "deployment_model": "distributed",
         # control plane (CPM)
-        "max_nics": 36, # 32 * qsfp28 + 4 * qsfpdd
+        "max_nics": 36,  # 32 * qsfp28 + 4 * qsfpdd
         "cp": {
             "min_ram": 3,
             "timos_line": "chassis=ixr-x slot=A card=cpm-ixr-x/imm32-qsfp28+4-qsfpdd",
@@ -174,7 +174,7 @@ SROS_VARIANTS = {
     "ixr-xs": {
         "deployment_model": "distributed",
         # control plane (CPM)
-        "max_nics": 54, # 6 * qsfpdd + 48 * sfp56
+        "max_nics": 54,  # 6 * qsfpdd + 48 * sfp56
         "cp": {
             "min_ram": 3,
             "timos_line": "chassis=ixr-x slot=A card=cpm-ixr-x/imm6-qsfpdd+48-sfp56",
@@ -194,7 +194,7 @@ SROS_VARIANTS = {
     "ixr-x3": {
         "deployment_model": "distributed",
         # control plane (CPM)
-        "max_nics": 36, # 36 * qsfpdd
+        "max_nics": 36,  # 36 * qsfpdd
         "cp": {
             "min_ram": 4,
             "timos_line": "chassis=ixr-x3 slot=A card=cpm-ixr-x/imm36-qsfpdd",
@@ -484,15 +484,15 @@ SROS_VARIANTS = {
             },
         ],
     },
-### SR-1 FP5 models (six variants with sfp-dd or qsfpdd only): 
-    #SR-1 FP5 - CP Card must include CPM/IOM
+    ### SR-1 FP5 models (six variants with sfp-dd or qsfpdd only):
+    # SR-1 FP5 - CP Card must include CPM/IOM
     "sr-1-46s": {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 48,
         "cp": {
             "min_ram": 4,
-            "timos_line": "slot=A chassis=sr-1-46s card=cpm-1x/i40-200g-sfpdd+6-800g-qsfpdd-1",  #CP Card must include CPM/IOM
+            "timos_line": "slot=A chassis=sr-1-46s card=cpm-1x/i40-200g-sfpdd+6-800g-qsfpdd-1",  # CP Card must include CPM/IOM
         },
         # line card (IOM/XCM)
         "lcs": [
@@ -506,14 +506,14 @@ SROS_VARIANTS = {
             }
         ],
     },
-    #SR-1 FP5 - CP Card must include CPM/IOM
+    # SR-1 FP5 - CP Card must include CPM/IOM
     "sr-1-92s": {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 48,
         "cp": {
             "min_ram": 4,
-            "timos_line": "slot=A chassis=sr-1-92s card=cpm-1x/i80-200g-sfpdd+12-400g-qsfpdd-1",   #CP Card must include CPM/IOM
+            "timos_line": "slot=A chassis=sr-1-92s card=cpm-1x/i80-200g-sfpdd+12-400g-qsfpdd-1",  # CP Card must include CPM/IOM
         },
         # line card (IOM/XCM)
         "lcs": [
@@ -527,14 +527,14 @@ SROS_VARIANTS = {
             }
         ],
     },
-    #SR-1 FP5 - CP Card must include CPM/IOM
+    # SR-1 FP5 - CP Card must include CPM/IOM
     "sr-1x-92s": {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 48,
         "cp": {
             "min_ram": 4,
-            "timos_line": "slot=A chassis=sr-1x-92s card=cpm-1x/i80-200g-sfpdd+12-800g-qsfpdd-1x",   #CP Card must include CPM/IOM
+            "timos_line": "slot=A chassis=sr-1x-92s card=cpm-1x/i80-200g-sfpdd+12-800g-qsfpdd-1x",  # CP Card must include CPM/IOM
         },
         # line card (IOM/XCM)
         "lcs": [
@@ -548,7 +548,7 @@ SROS_VARIANTS = {
             }
         ],
     },
-    #SR-1 FP5
+    # SR-1 FP5
     "sr-1-24d": {
         "deployment_model": "distributed",
         # control plane (CPM)
@@ -569,14 +569,14 @@ SROS_VARIANTS = {
             }
         ],
     },
-    #SR-1 FP5
+    # SR-1 FP5
     "sr-1-48d": {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 48,
         "cp": {
             "min_ram": 4,
-            "timos_line": "slot=A chassis=sr-1-48D card=cpm-1x/i48-400g-qsfpdd-1",   #CP Card must include CPM/IOM
+            "timos_line": "slot=A chassis=sr-1-48D card=cpm-1x/i48-400g-qsfpdd-1",  # CP Card must include CPM/IOM
         },
         # line card (IOM/XCM)
         "lcs": [
@@ -590,7 +590,7 @@ SROS_VARIANTS = {
             }
         ],
     },
-    #SR-1 FP5
+    # SR-1 FP5
     "sr-1x-48d": {
         "deployment_model": "distributed",
         # control plane (CPM)
