@@ -675,27 +675,22 @@ SROS_MD_COMMON_CFG = """
 """
 
 
-# in release 24 SR OS introduced an extra container "listen" in the netconf
-# container. As both release 23 and 24 will continue to be fairly widely used
-# an adaptation has to be made to be able to generate both images along with the
-# appropriate configuration for netconf to be enabled
-def return_specific_cfg(release):
-    if release <= 20:
-        return """
-/configure system management-interface yang-modules no nokia-modules
-/configure system management-interface yang-modules nokia-combined-modules
-"""
-    elif release <= 22:
+# get_version_specific_config returns the version specific configuration
+# based on the release number.
+def get_version_specific_config(major_version: int):
+    # releases <=22 boot with the classic CLI config by default
+    if major_version <= 22:
         return """
 /configure system management-interface yang-modules no nokia-submodules
 /configure system management-interface yang-modules nokia-combined-modules
 """
-    elif 22 < release < 24:
+    # 23.x releases use the Model-Driven CLI by default
+    if major_version == 23:
         return """
 /configure system management-interface netconf admin-state enable
 """
-    else:
-        return """
+    # releases 24.3.1 and above use a new command to enable netconf server
+    return """
 /configure system management-interface netconf listen admin-state enable
 """
 
@@ -1230,7 +1225,7 @@ class SROS_cp(SROS_vm):
             self.nic_type + ",netdev=br-mgmt,mac=%(mac)s" % {"mac": vrnetlab.gen_mac(0)}
         )
         res.append("-netdev")
-        res.append("bridge,br=br-mgmt,id=br-mgmt" % {"i": 0})
+        res.append("bridge,br=br-mgmt,id=br-mgmt")
 
         # add virtio NIC for internal control plane interface to vFPC
         res.append("-device")
@@ -1498,9 +1493,9 @@ def getDefaultConfig() -> str:
     SR OS >=23 uses model-driven configuration, while SR OS <=22 uses classic configuration.
     """
     if SROS_VERSION.major <= 22:
-        return SROS_CL_COMMON_CFG + return_specific_cfg(SROS_VERSION.major)
+        return SROS_CL_COMMON_CFG + get_version_specific_config(SROS_VERSION.major)
 
-    return SROS_MD_COMMON_CFG + return_specific_cfg(SROS_VERSION.major)
+    return SROS_MD_COMMON_CFG + get_version_specific_config(SROS_VERSION.major)
 
 
 if __name__ == "__main__":
