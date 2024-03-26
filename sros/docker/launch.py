@@ -674,9 +674,10 @@ SROS_MD_COMMON_CFG = """
 /configure system security snmp community "public" version v2c
 """
 
-# in release 24 SR OS introduced an extra container "listen" in the netconf 
+
+# in release 24 SR OS introduced an extra container "listen" in the netconf
 # container. As both release 23 and 24 will continue to be fairly widely used
-# an adaptation has to be made to be able to generate both images along with the 
+# an adaptation has to be made to be able to generate both images along with the
 # appropriate configuration for netconf to be enabled
 def return_specific_cfg(release):
     if release <= 20:
@@ -697,6 +698,7 @@ def return_specific_cfg(release):
         return """
 /configure system management-interface netconf listen admin-state enable
 """
+
 
 # to allow writing config to tftp location we needed to spin up a normal
 # tftp server in container host system. To access the host from qemu VM
@@ -1497,7 +1499,6 @@ def getDefaultConfig() -> str:
     """
     if SROS_VERSION.major <= 22:
         return SROS_CL_COMMON_CFG + return_specific_cfg(SROS_VERSION.major)
-
 
     return SROS_MD_COMMON_CFG + return_specific_cfg(SROS_VERSION.major)
 
