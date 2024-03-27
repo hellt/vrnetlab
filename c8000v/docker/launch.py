@@ -7,8 +7,6 @@ import re
 import signal
 import subprocess
 import sys
-import telnetlib
-import time
 
 import vrnetlab
 
