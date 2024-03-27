@@ -66,22 +66,21 @@ class C8000v_vm(vrnetlab.VM):
         """ Creates a iso image with a bootstrap configuration
         """
 
-        cfg_file = open('/iosxe_config.txt', 'w')
-        if self.license:
-            cfg_file.write("do clock set 13:33:37 1 Jan 2010\r\n")
-            cfg_file.write("interface GigabitEthernet1\r\n")
-            cfg_file.write("ip address 10.0.0.15 255.255.255.0\r\n")
-            cfg_file.write("no shut\r\n")
-            cfg_file.write("exit\r\n")
-            cfg_file.write("license accept end user agreement\r\n")
-            cfg_file.write("yes\r\n")
-            cfg_file.write("do license install tftp://10.0.0.2/license.lic\r\n\r\n")
-        cfg_file.write("license boot level network-premier addon dna-premier\r\n")
-        cfg_file.write("platform console serial\r\n\r\n")
-        cfg_file.write("do clear platform software vnic-if nvtable\r\n")
-        cfg_file.write("do wr\r\n")
-        cfg_file.write("do reload\r\n")
-        cfg_file.close()
+        with open('/iosxe_config.txt', 'w') as cfg_file:
+            if self.license:
+                cfg_file.write("do clock set 13:33:37 1 Jan 2010\r\n")
+                cfg_file.write("interface GigabitEthernet1\r\n")
+                cfg_file.write("ip address 10.0.0.15 255.255.255.0\r\n")
+                cfg_file.write("no shut\r\n")
+                cfg_file.write("exit\r\n")
+                cfg_file.write("license accept end user agreement\r\n")
+                cfg_file.write("yes\r\n")
+                cfg_file.write("do license install tftp://10.0.0.2/license.lic\r\n\r\n")
+            cfg_file.write("license boot level network-premier addon dna-premier\r\n")
+            cfg_file.write("platform console serial\r\n\r\n")
+            cfg_file.write("do clear platform software vnic-if nvtable\r\n")
+            cfg_file.write("do wr\r\n")
+            cfg_file.write("do reload\r\n")
 
         genisoimage_args = ["genisoimage", "-l", "-o", "/" + self.image_name, "/iosxe_config.txt"]
 
