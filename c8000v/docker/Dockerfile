@@ -1,5 +1,4 @@
-FROM ubuntu:20.04
-MAINTAINER Kristian Larsson <kristian@spritelink.net>
+FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -16,7 +15,6 @@ RUN apt-get update -qy \
     ssh \
     telnet \
     procps \
-    openvswitch-switch \
     genisoimage \
  && rm -rf /var/lib/apt/lists/*
 
