@@ -48,6 +48,7 @@ By selecting a certain variant (referred by its `name`) the VSIM will start with
 |    sr-1-24d  | distributed |       cpm-1x           |        m24-800g-qsfpdd-1         |    4     |    48    |
 |    sr-1-48d  | distributed |       cpm-1x           |        m48-400g-qsfpdd-1         |    4     |    48    |
 |   sr-1x-48d  | distributed |       cpm-1x           |        m48-800g-qsfpdd-1x        |    4     |    48    |
+|   vsr-i      | integrated  |       cpm-v            |  iom-v mda/1=m20-v mda/2=isa-tunnel-v  |    8     |    20    |
 
 The variants are [defined in the code](https://github.com/hellt/vrnetlab/blob/bf70a9a9f2f060a68797a7ec29ce6aea96acb779/sros/docker/launch.py#L58) as a dictionary. If a variant you need is not in the table, use the `custom` variant and define the emulated platform yourself as described below.
 
