@@ -74,6 +74,24 @@ cp: cpu=2 ram=4 chassis=ixr-e slot=A card=cpm-ixr-e ___ lc: cpu=2 ram=4 max_nics
 
 Custom variants WILL NOT have cards/mda auto-configured, user needs to configure those manually once the node finishes boot process.
 
+### Additional CFs
+Additional CFs can be added on custom variants via the parameter `cfX=SIZE`, where  
+X = CF slot id  
+SIZE = size of the disk to be created. This value is passed directly to `qemu-img create`  
+```bash
+cp: cpu=2 ram=4 cf1=1G cf2=2G chassis=SR-7 slot=A card=cpm5 ___
+lc: cpu=2 ram=4 max_nics=10 chassis=SR-7 slot=1 card=iom4-e-b mda/1=me10-10gb-sfp+
+```
+Disk(s) are created in the host clab node folder tftpboot/ with filename cfX_SLOT.qcow2. If disk file already exists it is reused without any modification.
+```
+r01/
+└── tftpboot
+    ├── cf1_A.qcow2
+    ├── cf2_A.qcow2
+    ├── config.txt
+    └── license.txt
+```
+
 ## Usage with containerlab
 
 Refer to containerlab documentation piece on [vrnetlab integration](https://containerlab.srlinux.dev/manual/vrnetlab/) and vr-sros.
