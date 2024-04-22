@@ -36,7 +36,6 @@ def trace(self, message, *args, **kws):
 
 logging.Logger.trace = trace
 
-
 class Ubuntu_vm(vrnetlab.VM):
     def __init__(
         self,
@@ -64,6 +63,14 @@ class Ubuntu_vm(vrnetlab.VM):
 
         self.qemu_args.extend(["-cdrom", "/" + self.image_name])
 
+
+        if "ADD_DISK" in os.environ:
+            disk_size = os.getenv("ADD_DISK")
+
+
+            self.add_disk(disk_size)
+
+
     def create_boot_image(self):
         """Creates a cloud-init iso image with a bootstrap configuration"""
 
@@ -90,6 +97,8 @@ class Ubuntu_vm(vrnetlab.VM):
             net_cfg_file.write("  enp1s0:\n")
             net_cfg_file.write("    addresses: [10.0.0.15/24]\n")
             net_cfg_file.write("    gateway4: 10.0.0.2\n")
+            net_cfg_file.write("    nameservers:\n")
+            net_cfg_file.write("        addresses: [ 9.9.9.9 ]\n")
 
         cloud_localds_args = [
             "cloud-localds",
@@ -149,6 +158,31 @@ class Ubuntu_vm(vrnetlab.VM):
         if "bus=pci.1" not in res[-3]:
             res[-3] = res[-3] + ",bus=pci.1"
         return res
+
+    def add_disk(self, disk_size, driveif="ide"):
+
+        additional_disk = f"disk_{disk_size}.qcow2"
+
+        if not os.path.exists(additional_disk):
+            self.logger.debug(f"Creating additional disk image {additional_disk}")
+            vrnetlab.run_command(
+                [
+                    "qemu-img",
+                    "create",
+                    "-f",
+                    "qcow2",
+                    additional_disk,
+                    disk_size
+                ]
+            )
+
+        self.qemu_args.extend(
+            [
+                "-drive",
+                f"if={driveif},file={additional_disk}",
+            ]
+        )
+
 
 class Ubuntu(vrnetlab.VR):
     def __init__(self, hostname, username, password, nics, conn_mode):
