@@ -76,6 +76,8 @@ class VM:
         ram=4096,
         driveif="ide",
         provision_pci_bus=True,
+        cpu="host",
+        smp=1
     ):
         self.logger = logging.getLogger()
 
@@ -90,6 +92,10 @@ class VM:
         self.spins = 0
         self.p = None
         self.tn = None
+
+        self._ram = ram
+        self._cpu = cpu
+        self._smp = smp
 
         #  various settings
         self.uuid = None
@@ -142,13 +148,23 @@ class VM:
         self.qemu_args.extend(
             [
                 "-m",
-                str(ram),
+                str(self.ram),
                 "-serial",
                 "telnet:0.0.0.0:50%02d,server,nowait" % self.num,
                 "-drive",
                 f"if={driveif},file={overlay_disk_image}",
             ]
         )
+
+        self.qemu_args.extend(
+            [
+                "-cpu",
+                self.cpu,
+                "-smp",
+                self.smp
+            ]
+        )
+
         # enable hardware assist if KVM is available
         if os.path.exists("/dev/kvm"):
             self.qemu_args.insert(1, "-enable-kvm")
@@ -718,6 +734,42 @@ class VM:
         if version is not None:
             return version
         raise ValueError("The VERSION environment variable is not set")
+    
+    @property
+    def ram(self):
+        """
+        Read memory size from MEOMORY environment vaiable
+        """
+
+
+        if "MEMORY" in os.environ:
+            return get_digits(os.getenv("MEMORY"))
+
+        return self._ram
+
+    
+    @property
+    def cpu(self):
+        """
+        Read the CPU type from CPU environment vaiable
+        """
+
+        if "CPU" in os.environ:
+            return str(os.getenv("CPU"))
+
+        return str(self._cpu)
+    
+    @property
+    def smp(self):
+        """
+        Read SMP parameter (e.g. number of CPUs) from SMP environment vaiable
+        """
+
+        if "SMP" in os.environ:
+            return str(os.getenv("SMP"))
+
+        return str(self._smp)
+
 
 
 class VR:
@@ -775,48 +827,6 @@ class VR:
 
 class QemuBroken(Exception):
     """Our Qemu instance is somehow broken"""
-
-
-# getMem returns the RAM size (in Mb) for a given VM mode.
-# RAM can be specified in the variant dict, provided by a user via the custom type definition,
-# or set via env vars.
-# If set via env vars, the getMem will return this value as the most specific one.
-# Otherwise, the ram provided to this function will be converted to Mb and returned.
-def getMem(vmMode: str, ram: int) -> int:
-    if vmMode == "integrated":
-        # Integrated VM can use both MEMORY and CP_MEMORY env vars
-        if "MEMORY" in os.environ:
-            return 1024 * get_digits(os.getenv("MEMORY"))
-        if "CP_MEMORY" in os.environ:
-            return 1024 * get_digits(os.getenv("CP_MEMORY"))
-    if vmMode == "cp":
-        if "CP_MEMORY" in os.environ:
-            return 1024 * get_digits(os.getenv("CP_MEMORY"))
-    if vmMode == "lc":
-        if "LC_MEMORY" in os.environ:
-            return 1024 * get_digits(os.getenv("LC_MEMORY"))
-    return 1024 * int(ram)
-
-
-# getCpu returns the number of cpu cores for a given VM mode.
-# Cpu can be specified in the variant dict, provided by a user via the custom type definition,
-# or set via env vars.
-# If set via env vars, the function will return this value as the most specific one.
-# Otherwise, the number provided to this function via cpu param returned.
-def getCpu(vsimMode: str, cpu: int) -> int:
-    if vsimMode == "integrated":
-        # Integrated VM can use both MEMORY and CP_MEMORY env vars
-        if "CPU" in os.environ:
-            return int(os.getenv("CPU"))
-        if "CP_CPU" in os.environ:
-            return int(os.getenv("CP_CPU"))
-    if vsimMode == "cp":
-        if "CP_CPU" in os.environ:
-            return int(os.getenv("CP_CPU"))
-    if vsimMode == "lc":
-        if "LC_CPU" in os.environ:
-            return int(os.getenv("LC_CPU"))
-    return cpu
 
 
 # strip all non-numeric characters from a string
