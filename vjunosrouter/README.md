@@ -1,6 +1,6 @@
 # vrnetlab / Juniper vJunos-router
 
-This is the vrnetlab docker image for Juniper's vJunos-router. This is build from the vJunos-switch template.
+This is the vrnetlab docker image for Juniper's vJunos-router. This is built from the vJunos-switch template.
 
 ## Building the docker image
 
