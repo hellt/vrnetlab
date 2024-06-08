@@ -77,7 +77,7 @@ class VM:
         driveif="ide",
         provision_pci_bus=True,
         cpu="host",
-        smp=1
+        smp=1,
     ):
         self.logger = logging.getLogger()
 
@@ -156,14 +156,7 @@ class VM:
             ]
         )
 
-        self.qemu_args.extend(
-            [
-                "-cpu",
-                self.cpu,
-                "-smp",
-                self.smp
-            ]
-        )
+        self.qemu_args.extend(["-cpu", self.cpu, "-smp", self.smp])
 
         # enable hardware assist if KVM is available
         if os.path.exists("/dev/kvm"):
@@ -722,7 +715,6 @@ class VM:
             self.stop()
             self.start()
 
-
     @property
     def version(self):
         """Read version number from VERSION environment variable
@@ -734,42 +726,42 @@ class VM:
         if version is not None:
             return version
         raise ValueError("The VERSION environment variable is not set")
-    
+
     @property
     def ram(self):
         """
-        Read memory size from MEOMORY environment vaiable
+        Read memory size from the QEMU_MEMORY environment variable and use it in the qemu parameters for the VM.
+        If the QEMU_MEMORY environment variable is not set, use the default value.
         """
 
-
-        if "MEMORY" in os.environ:
-            return get_digits(os.getenv("MEMORY"))
+        if "QEMU_MEMORY" in os.environ:
+            return get_digits(str(os.getenv("QEMU_MEMORY")))
 
         return self._ram
 
-    
     @property
     def cpu(self):
         """
-        Read the CPU type from CPU environment vaiable
+        Read the CPU type the QEMU_CPU environment variable and use it in the qemu parameters for the VM.
+        If the QEMU_CPU environment variable is not set, use the default value.
         """
 
-        if "CPU" in os.environ:
-            return str(os.getenv("CPU"))
+        if "QEMU_CPU" in os.environ:
+            return str(os.getenv("QEMU_CPU"))
 
         return str(self._cpu)
-    
+
     @property
     def smp(self):
         """
-        Read SMP parameter (e.g. number of CPUs) from SMP environment vaiable
+        Read SMP parameter (e.g. number of CPU cores) from the QEMU_SMP environment variable.
+        If the QEMU_SMP parameter is not set, the default value is used.
         """
 
-        if "SMP" in os.environ:
-            return str(os.getenv("SMP"))
+        if "QEMU_SMP" in os.environ:
+            return str(os.getenv("QEMU_SMP"))
 
         return str(self._smp)
-
 
 
 class VR:
@@ -829,7 +821,10 @@ class QemuBroken(Exception):
     """Our Qemu instance is somehow broken"""
 
 
-# strip all non-numeric characters from a string
 def get_digits(input_str: str) -> int:
+    """
+    Strip all non-numeric characters from a string
+    """
+
     non_string_chars = re.findall(r"\d", input_str)
     return int("".join(non_string_chars))
