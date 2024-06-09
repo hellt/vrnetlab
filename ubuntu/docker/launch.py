@@ -8,7 +8,6 @@ import signal
 import subprocess
 import sys
 
-
 import vrnetlab
 
 
@@ -35,6 +34,7 @@ def trace(self, message, *args, **kws):
 
 
 logging.Logger.trace = trace
+
 
 class Ubuntu_vm(vrnetlab.VM):
     def __init__(
@@ -63,13 +63,10 @@ class Ubuntu_vm(vrnetlab.VM):
 
         self.qemu_args.extend(["-cdrom", "/" + self.image_name])
 
-
         if "ADD_DISK" in os.environ:
             disk_size = os.getenv("ADD_DISK")
 
-
             self.add_disk(disk_size)
-
 
     def create_boot_image(self):
         """Creates a cloud-init iso image with a bootstrap configuration"""
@@ -80,6 +77,7 @@ class Ubuntu_vm(vrnetlab.VM):
             cfg_file.write(f"fqdn: {self.hostname}\n")
             cfg_file.write("users:\n")
             cfg_file.write(f"  - name: {self.username}\n")
+            cfg_file.write("    shell: /bin/bash\n")
             cfg_file.write('    sudo: "ALL=(ALL) NOPASSWD: ALL"\n')
             cfg_file.write("    groups: users, admin\n")
             cfg_file.write(f"    plain_text_passwd: {self.password}\n")
@@ -123,7 +121,6 @@ class Ubuntu_vm(vrnetlab.VM):
         (ridx, match, res) = self.tn.expect([b"login: "], 1)
         if match:  # got a match!
             if ridx == 0:  # login
-
                 self.logger.debug("matched, login: ")
                 self.wait_write("", wait=None)
 
@@ -145,7 +142,7 @@ class Ubuntu_vm(vrnetlab.VM):
         self.spins += 1
 
         return
-    
+
     def gen_mgmt(self):
         """
         Augment the parent class function to change the PCI bus
@@ -160,20 +157,12 @@ class Ubuntu_vm(vrnetlab.VM):
         return res
 
     def add_disk(self, disk_size, driveif="ide"):
-
         additional_disk = f"disk_{disk_size}.qcow2"
 
         if not os.path.exists(additional_disk):
             self.logger.debug(f"Creating additional disk image {additional_disk}")
             vrnetlab.run_command(
-                [
-                    "qemu-img",
-                    "create",
-                    "-f",
-                    "qcow2",
-                    additional_disk,
-                    disk_size
-                ]
+                ["qemu-img", "create", "-f", "qcow2", additional_disk, disk_size]
             )
 
         self.qemu_args.extend(

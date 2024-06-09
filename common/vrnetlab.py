@@ -141,22 +141,29 @@ class VM:
                 ]
             )
 
-        self.qemu_args = ["qemu-system-x86_64", "-display", "none", "-machine", "pc"]
-        self.qemu_args.extend(
-            ["-monitor", "tcp:0.0.0.0:40%02d,server,nowait" % self.num]
-        )
-        self.qemu_args.extend(
-            [
-                "-m",
-                str(self.ram),
-                "-serial",
-                "telnet:0.0.0.0:50%02d,server,nowait" % self.num,
-                "-drive",
-                f"if={driveif},file={overlay_disk_image}",
-            ]
-        )
+        self.qemu_args = [
+            "qemu-system-x86_64",
+            "-display",
+            "none",
+            "-machine",
+            "pc",
+            "-monitor",
+            f"tcp:0.0.0.0:40{self.num:02d},server,nowait",
+            "-serial",
+            f"telnet:0.0.0.0:50{self.num:02d},server,nowait",
+            "-m",  # memory
+            str(self.ram),
+            "-cpu",  # cpu type
+            self.cpu,
+            "-smp",
+            self.smp,  # cpu core configuration
+            "-drive",
+            f"if={driveif},file={overlay_disk_image}",
+        ]
 
-        self.qemu_args.extend(["-cpu", self.cpu, "-smp", self.smp])
+        # add additional qemu args if they were provided
+        if self.qemu_additional_args:
+            self.qemu_args.extend(self.qemu_additional_args)
 
         # enable hardware assist if KVM is available
         if os.path.exists("/dev/kvm"):
@@ -732,6 +739,7 @@ class VM:
         """
         Read memory size from the QEMU_MEMORY environment variable and use it in the qemu parameters for the VM.
         If the QEMU_MEMORY environment variable is not set, use the default value.
+        Should be provided as a number of MB. e.g. 4096.
         """
 
         if "QEMU_MEMORY" in os.environ:
@@ -756,12 +764,26 @@ class VM:
         """
         Read SMP parameter (e.g. number of CPU cores) from the QEMU_SMP environment variable.
         If the QEMU_SMP parameter is not set, the default value is used.
+        Should be provided as a number, e.g. 2
         """
 
         if "QEMU_SMP" in os.environ:
             return str(os.getenv("QEMU_SMP"))
 
         return str(self._smp)
+
+    @property
+    def qemu_additional_args(self):
+        """
+        Read additional qemu arguments (e.g. number of CPU cores) from the QEMU_ADDITIONAL_ARGS environment variable.
+        If the QEMU_ADDITIONAL_ARGS parameter is not set, nothing is added to the default args set.
+        Should be provided as a space separated list of arguments, e.g. "-machine pc -display none"
+        """
+
+        if "QEMU_ADDITIONAL_ARGS" in os.environ:
+            s = str(os.getenv("QEMU_ADDITIONAL_ARGS"))
+            if s:
+                return s.split()
 
 
 class VR:
