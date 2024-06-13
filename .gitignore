@@ -14,3 +14,6 @@ venv
 # Still allow for the common python scripts
 !common/healthcheck.py
 !common/vrnetlab.py
+
+.envrc
+.python-version

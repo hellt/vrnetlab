@@ -1,16 +1,18 @@
-FROM ubuntu:20.04
+FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -qy \
- && apt-get upgrade -qy \
  && apt-get install -y \
     dosfstools \
     bridge-utils \
     iproute2 \
-    python3-ipy \
     socat \
+    ssh \
     qemu-kvm \
+    inetutils-ping \
+    dnsutils \
+    telnet \
  && rm -rf /var/lib/apt/lists/*
 
 ARG IMAGE

@@ -68,7 +68,16 @@ class VM:
         raise ValueError(f"Could not read image format for {self.image}")
 
     def __init__(
-        self, username, password, disk_image="", num=0, ram=4096, driveif="ide"
+        self,
+        username,
+        password,
+        disk_image="",
+        num=0,
+        ram=4096,
+        driveif="ide",
+        provision_pci_bus=True,
+        cpu="host",
+        smp=1,
     ):
         self.logger = logging.getLogger()
 
@@ -84,6 +93,10 @@ class VM:
         self.p = None
         self.tn = None
 
+        self._ram = ram
+        self._cpu = cpu
+        self._smp = smp
+
         #  various settings
         self.uuid = None
         self.fake_start_date = None
@@ -95,6 +108,8 @@ class VM:
         # to have them allocated sequential from eth1
         self.highest_provisioned_nic_num = 0
 
+        # we setup pci bus by default
+        self.provision_pci_bus = provision_pci_bus
         self.nics_per_pci_bus = 26  # tested to work with XRv
         self.smbios = []
 
@@ -126,20 +141,30 @@ class VM:
                 ]
             )
 
-        self.qemu_args = ["qemu-system-x86_64", "-display", "none", "-machine", "pc"]
-        self.qemu_args.extend(
-            ["-monitor", "tcp:0.0.0.0:40%02d,server,nowait" % self.num]
-        )
-        self.qemu_args.extend(
-            [
-                "-m",
-                str(ram),
-                "-serial",
-                "telnet:0.0.0.0:50%02d,server,nowait" % self.num,
-                "-drive",
-                f"if={driveif},file={overlay_disk_image}",
-            ]
-        )
+        self.qemu_args = [
+            "qemu-system-x86_64",
+            "-display",
+            "none",
+            "-machine",
+            "pc",
+            "-monitor",
+            f"tcp:0.0.0.0:40{self.num:02d},server,nowait",
+            "-serial",
+            f"telnet:0.0.0.0:50{self.num:02d},server,nowait",
+            "-m",  # memory
+            str(self.ram),
+            "-cpu",  # cpu type
+            self.cpu,
+            "-smp",
+            self.smp,  # cpu core configuration
+            "-drive",
+            f"if={driveif},file={overlay_disk_image}",
+        ]
+
+        # add additional qemu args if they were provided
+        if self.qemu_additional_args:
+            self.qemu_args.extend(self.qemu_additional_args)
+
         # enable hardware assist if KVM is available
         if os.path.exists("/dev/kvm"):
             self.qemu_args.insert(1, "-enable-kvm")
@@ -165,8 +190,9 @@ class VM:
             cmd.extend(["-smbios", quoted_smbios])
 
         # setup PCI buses
-        for i in range(1, math.ceil(self.num_nics / self.nics_per_pci_bus) + 1):
-            cmd.extend(["-device", "pci-bridge,chassis_nr={},id=pci.{}".format(i, i)])
+        if self.provision_pci_bus:
+            for i in range(1, math.ceil(self.num_nics / self.nics_per_pci_bus) + 1):
+                cmd.extend(["-device", f"pci-bridge,chassis_nr={i},id=pci.{i}"])
 
         # generate mgmt NICs
         cmd.extend(self.gen_mgmt())
@@ -519,18 +545,14 @@ class VM:
                 res.extend(
                     [
                         "-device",
-                        "%(nic_type)s,"
-                        "netdev=p%(i)02d,"
-                        "bus=pci.%(pci_bus)s,"
-                        "addr=0x%(addr)x"
-                        % {
-                            "nic_type": self.nic_type,
-                            "i": i,
-                            "pci_bus": pci_bus,
-                            "addr": addr,
-                        },
+                        f"{self.nic_type},netdev=p{i:02d}"
+                        + (
+                            f",bus=pci.{pci_bus},addr=0x{addr:x}"
+                            if self.provision_pci_bus
+                            else ""
+                        ),
                         "-netdev",
-                        "socket,id=p%(i)02d,listen=:%(j)02d" % {"i": i, "j": i + 10000},
+                        f"socket,id=p{i:02d},listen=:{i + 10000:02d}",
                     ]
                 )
                 continue
@@ -547,14 +569,12 @@ class VM:
 
             res.append("-device")
             res.append(
-                "%(nic_type)s,netdev=p%(i)02d,mac=%(mac)s,bus=pci.%(pci_bus)s,addr=0x%(addr)x"
-                % {
-                    "nic_type": self.nic_type,
-                    "i": i,
-                    "pci_bus": pci_bus,
-                    "addr": addr,
-                    "mac": mac,
-                }
+                f"{self.nic_type},netdev=p{i:02d},mac={mac}"
+                + (
+                    f",bus=pci.{pci_bus},addr=0x{addr:x}"
+                    if self.provision_pci_bus
+                    else ""
+                ),
             )
 
             if self.conn_mode == "tc":
@@ -702,6 +722,69 @@ class VM:
             self.stop()
             self.start()
 
+    @property
+    def version(self):
+        """Read version number from VERSION environment variable
+
+        The VERSION environment variable is set at build time using the value
+        from the makefile. If the environment variable is not defined please add
+        the variables in the Dockerfile (see csr)"""
+        version = os.environ.get("VERSION")
+        if version is not None:
+            return version
+        raise ValueError("The VERSION environment variable is not set")
+
+    @property
+    def ram(self):
+        """
+        Read memory size from the QEMU_MEMORY environment variable and use it in the qemu parameters for the VM.
+        If the QEMU_MEMORY environment variable is not set, use the default value.
+        Should be provided as a number of MB. e.g. 4096.
+        """
+
+        if "QEMU_MEMORY" in os.environ:
+            return get_digits(str(os.getenv("QEMU_MEMORY")))
+
+        return self._ram
+
+    @property
+    def cpu(self):
+        """
+        Read the CPU type the QEMU_CPU environment variable and use it in the qemu parameters for the VM.
+        If the QEMU_CPU environment variable is not set, use the default value.
+        """
+
+        if "QEMU_CPU" in os.environ:
+            return str(os.getenv("QEMU_CPU"))
+
+        return str(self._cpu)
+
+    @property
+    def smp(self):
+        """
+        Read SMP parameter (e.g. number of CPU cores) from the QEMU_SMP environment variable.
+        If the QEMU_SMP parameter is not set, the default value is used.
+        Should be provided as a number, e.g. 2
+        """
+
+        if "QEMU_SMP" in os.environ:
+            return str(os.getenv("QEMU_SMP"))
+
+        return str(self._smp)
+
+    @property
+    def qemu_additional_args(self):
+        """
+        Read additional qemu arguments (e.g. number of CPU cores) from the QEMU_ADDITIONAL_ARGS environment variable.
+        If the QEMU_ADDITIONAL_ARGS parameter is not set, nothing is added to the default args set.
+        Should be provided as a space separated list of arguments, e.g. "-machine pc -display none"
+        """
+
+        if "QEMU_ADDITIONAL_ARGS" in os.environ:
+            s = str(os.getenv("QEMU_ADDITIONAL_ARGS"))
+            if s:
+                return s.split()
+
 
 class VR:
     def __init__(self, username, password):
@@ -760,49 +843,10 @@ class QemuBroken(Exception):
     """Our Qemu instance is somehow broken"""
 
 
-# getMem returns the RAM size (in Mb) for a given VM mode.
-# RAM can be specified in the variant dict, provided by a user via the custom type definition,
-# or set via env vars.
-# If set via env vars, the getMem will return this value as the most specific one.
-# Otherwise, the ram provided to this function will be converted to Mb and returned.
-def getMem(vmMode: str, ram: int) -> int:
-    if vmMode == "integrated":
-        # Integrated VM can use both MEMORY and CP_MEMORY env vars
-        if "MEMORY" in os.environ:
-            return 1024 * get_digits(os.getenv("MEMORY"))
-        if "CP_MEMORY" in os.environ:
-            return 1024 * get_digits(os.getenv("CP_MEMORY"))
-    if vmMode == "cp":
-        if "CP_MEMORY" in os.environ:
-            return 1024 * get_digits(os.getenv("CP_MEMORY"))
-    if vmMode == "lc":
-        if "LC_MEMORY" in os.environ:
-            return 1024 * get_digits(os.getenv("LC_MEMORY"))
-    return 1024 * int(ram)
-
-
-# getCpu returns the number of cpu cores for a given VM mode.
-# Cpu can be specified in the variant dict, provided by a user via the custom type definition,
-# or set via env vars.
-# If set via env vars, the function will return this value as the most specific one.
-# Otherwise, the number provided to this function via cpu param returned.
-def getCpu(vsimMode: str, cpu: int) -> int:
-    if vsimMode == "integrated":
-        # Integrated VM can use both MEMORY and CP_MEMORY env vars
-        if "CPU" in os.environ:
-            return int(os.getenv("CPU"))
-        if "CP_CPU" in os.environ:
-            return int(os.getenv("CP_CPU"))
-    if vsimMode == "cp":
-        if "CP_CPU" in os.environ:
-            return int(os.getenv("CP_CPU"))
-    if vsimMode == "lc":
-        if "LC_CPU" in os.environ:
-            return int(os.getenv("LC_CPU"))
-    return cpu
-
-
-# strip all non-numeric characters from a string
 def get_digits(input_str: str) -> int:
+    """
+    Strip all non-numeric characters from a string
+    """
+
     non_string_chars = re.findall(r"\d", input_str)
     return int("".join(non_string_chars))

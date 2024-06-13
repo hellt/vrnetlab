@@ -255,12 +255,12 @@ class VMX_vcp(vrnetlab.VM):
 
 class VMX_vfpc(vrnetlab.VM):
     def __init__(self, version, conn_mode):
-        super(VMX_vfpc, self).__init__(None, None, disk_image="/vmx/vfpc.img", num=1)
-        self.version = version
+        super(VMX_vfpc, self).__init__(None, None, disk_image="/vmx/vfpc.img", num=1, cpu="SandyBridge", smp="3")
+        self.junos_version = version
         self.num_nics = 96
 
         self.nic_type = "virtio-net-pci"
-        self.qemu_args.extend(["-cpu", "SandyBridge", "-M", "pc", "-smp", "3"])
+        self.qemu_args.extend(["-M", "pc"])
         # add metadata image if it exists
         if os.path.exists("/vmx/metadata-usb-fpc0.img"):
             self.qemu_args.extend(
@@ -289,7 +289,7 @@ class VMX_vfpc(vrnetlab.VM):
             ["-netdev", "tap,ifname=vfpc-int,id=vfpc-int,script=no,downscript=no"]
         )
 
-        if self.version not in ("vmx-14.1R6.4"):
+        if self.junos_version not in ("vmx-14.1R6.4"):
             # dummy interface for some vMX versions - not sure why vFPC wants
             # it but without it we get a misalignment
             res.extend(

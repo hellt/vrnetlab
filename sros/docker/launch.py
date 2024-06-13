@@ -38,6 +38,46 @@ def trace(self, message, *args, **kws):
 logging.Logger.trace = trace
 
 
+# getMem returns the RAM size (in Mb) for a given VM mode.
+# RAM can be specified in the variant dict, provided by a user via the custom type definition,
+# or set via env vars.
+# If set via env vars, the getMem will return this value as the most specific one.
+# Otherwise, the ram provided to this function will be converted to Mb and returned.
+def getMem(vmMode: str, ram: int) -> int:
+    if vmMode == "integrated":
+        # Integrated VM can use both MEMORY and CP_MEMORY env vars
+        if "MEMORY" in os.environ:
+            return 1024 * get_digits(os.getenv("MEMORY"))
+        if "CP_MEMORY" in os.environ:
+            return 1024 * get_digits(os.getenv("CP_MEMORY"))
+    if vmMode == "cp":
+        if "CP_MEMORY" in os.environ:
+            return 1024 * get_digits(os.getenv("CP_MEMORY"))
+    if vmMode == "lc":
+        if "LC_MEMORY" in os.environ:
+            return 1024 * get_digits(os.getenv("LC_MEMORY"))
+    return 1024 * int(ram)
+
+# getCpu returns the number of cpu cores for a given VM mode.
+# Cpu can be specified in the variant dict, provided by a user via the custom type definition,
+# or set via env vars.
+# If set via env vars, the function will return this value as the most specific one.
+# Otherwise, the number provided to this function via cpu param returned.
+def getCpu(vsimMode: str, cpu: int) -> int:
+    if vsimMode == "integrated":
+        # Integrated VM can use both MEMORY and CP_MEMORY env vars
+        if "CPU" in os.environ:
+            return int(os.getenv("CPU"))
+        if "CP_CPU" in os.environ:
+            return int(os.getenv("CP_CPU"))
+    if vsimMode == "cp":
+        if "CP_CPU" in os.environ:
+            return int(os.getenv("CP_CPU"))
+    if vsimMode == "lc":
+        if "LC_CPU" in os.environ:
+            return int(os.getenv("LC_CPU"))
+    return cpu
+
 @dataclass
 class SROSVersion:
     """SROSVersion is a dataclass that stores SROS version components
@@ -82,10 +122,13 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 34,  # 24*10 + 8*25G + 2*100G (with connector)
-        "cp": {
-            "min_ram": 3,
-            "timos_line": "slot=A chassis=ixr-e card=cpm-ixr-e",
-        },
+        "cps": [
+            {
+                "slot": "A",
+                "min_ram": 3,
+                "timos_line": "slot=A chassis=ixr-e card=cpm-ixr-e",
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -138,10 +181,13 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 54,
-        "cp": {
-            "min_ram": 3,
-            "timos_line": "slot=A chassis=ixr-s card=cpm-ixr-s",
-        },
+        "cps": [
+            {
+                "slot": "A",
+                "min_ram": 3,
+                "timos_line": "slot=A chassis=ixr-s card=cpm-ixr-s",
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -153,14 +199,86 @@ SROS_VARIANTS = {
             }
         ],
     },
+    "ixr-x1": {
+        "deployment_model": "distributed",
+        # control plane (CPM)
+        "max_nics": 36,  # 32 * qsfp28 + 4 * qsfpdd
+        "cps": [
+            {
+                "slot": "A",
+                "min_ram": 3,
+                "timos_line": "chassis=ixr-x slot=A card=cpm-ixr-x/imm32-qsfp28+4-qsfpdd",
+            },
+        ],
+        # line card (IOM/XCM)
+        "lcs": [
+            {
+                "min_ram": 4,
+                **line_card_config(
+                    chassis="ixr-x",
+                    card="imm32-qsfp28+4-qsfpdd",
+                    mda="m32-qsfp28+4-qsfpdd",
+                ),
+            }
+        ],
+    },
+    "ixr-xs": {
+        "deployment_model": "distributed",
+        # control plane (CPM)
+        "max_nics": 54,  # 6 * qsfpdd + 48 * sfp56
+        "cps": [
+            {
+                "slot": "A",
+                "min_ram": 3,
+                "timos_line": "chassis=ixr-x slot=A card=cpm-ixr-x/imm6-qsfpdd+48-sfp56",
+            },
+        ],
+        # line card (IOM/XCM)
+        "lcs": [
+            {
+                "min_ram": 4,
+                **line_card_config(
+                    chassis="ixr-x",
+                    card="imm6-qsfpdd+48-sfp56",
+                    mda="m6-qsfpdd+48-sfp56",
+                ),
+            }
+        ],
+    },
+    "ixr-x3": {
+        "deployment_model": "distributed",
+        # control plane (CPM)
+        "max_nics": 36,  # 36 * qsfpdd
+        "cps": [
+            {
+            "slot": "A",
+            "min_ram": 4,
+            "timos_line": "chassis=ixr-x3 slot=A card=cpm-ixr-x/imm36-qsfpdd",
+            },
+        ],
+        # line card (IOM/XCM)
+        "lcs": [
+            {
+                "min_ram": 5,
+                **line_card_config(
+                    chassis="ixr-x3",
+                    card="imm36-qsfpdd",
+                    mda="m36-qsfpdd",
+                ),
+            }
+        ],
+    },
     "ixr-e-small": {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 18,
-        "cp": {
+        "cps": [
+            {
+            "slot": "A",
             "min_ram": 3,
             "timos_line": "slot=A chassis=ixr-e card=imm14-10g-sfp++4-1g-tx",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -180,6 +298,18 @@ SROS_VARIANTS = {
             card="cpm-ixr-ec",
             card_type="imm4-1g-tx+20-1g-sfp+6-10g-sfp+",
             mda="m4-1g-tx+20-1g-sfp+6-10g-sfp+",
+            integrated=True,
+        ),
+    },
+    "ixr-e2c": {
+        "deployment_model": "integrated",
+        "min_ram": 4,  # minimum RAM requirements
+        "max_nics": 30,
+        **line_card_config(
+            chassis="ixr-e2c",
+            card="cpm-ixr-e2c",
+            card_type="imm12-sfp28+2-qsfp28",
+            mda="m12-sfp28+2-qsfp28",
             integrated=True,
         ),
     },
@@ -225,11 +355,14 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         "max_nics": 10,  # 8+2
         "power": {"modules": {"ac/hv": 3, "dc": 4}},
-        "cp": {
+        "cps": [ 
+            {
+            "slot": "A",
             "min_ram": 3,
             # The 7750 SR-2s uses an integrated switch fabric module (SFM) design
             "timos_line": "slot=A chassis=sr-2s sfm=sfm-2s card=cpm-2s",
-        },
+            },
+        ],
         "lcs": [
             {
                 "min_ram": 4,
@@ -244,15 +377,43 @@ SROS_VARIANTS = {
             },
         ],
     },
+    "sr-2se": {
+        "deployment_model": "distributed",
+        "max_nics": 36,
+        "power": {"modules": {"ac/hv": 3, "dc": 4}},
+        "cps": [
+            {
+            "slot": "A",
+            "min_ram": 4,
+            # The 7750 SR-2se uses an integrated switch fabric module (SFM) design
+            "timos_line": "slot=A chassis=sr-2se sfm=sfm-2se card=cpm-2se",
+            },
+        ],
+        "lcs": [
+            {
+                "min_ram": 8,
+                "timos_line": "slot=1 chassis=sr-2se sfm=sfm-2se card=xcm-2se mda/1=x2-s36-800g-qsfpdd-18.0t",
+                "card_config": """
+/configure sfm 1 sfm-type sfm-2se
+/configure sfm 2 sfm-type sfm-2se
+/configure card 1 card-type xcm-2se
+/configure card 1 mda 1 mda-type x2-s36-800g-qsfpdd-18.0t
+""",
+            },
+        ],
+    },
     "sr-7s": {  # defaults to FP5 cards
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 36,
         "power": {"modules": 10, "shelves": 2},
-        "cp": {
+        "cps": [
+            {
+            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=SR-7s sfm=sfm2-s card=cpm2-s",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -274,10 +435,13 @@ SROS_VARIANTS = {
         # control plane (CPM)
         "max_nics": 36,
         "power": {"modules": 10, "shelves": 2},
-        "cp": {
+        "cps": [
+            {
+            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=SR-7s sfm=sfm-s card=cpm2-s",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -299,10 +463,13 @@ SROS_VARIANTS = {
         # control plane (CPM)
         "max_nics": 36,
         "power": {"modules": 10, "shelves": 2},
-        "cp": {
+        "cps": [
+            {
+            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=SR-14s sfm=sfm-s card=cpm2-s",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -340,10 +507,13 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 40,
-        "cp": {
+        "cps": [
+            {
+            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1e card=cpm-e",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -357,10 +527,13 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 12,
-        "cp": {
+        "cps": [
+            {
+            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1e card=cpm-e",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -377,10 +550,13 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 10,
-        "cp": {
+        "cps": [
+            {
+            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-a4 card=cpm-a",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -392,20 +568,145 @@ SROS_VARIANTS = {
             },
         ],
     },
-    "sr-1x-48d": {
+    ### SR-1 FP5 models (six variants with sfp-dd or qsfpdd only):
+    # SR-1 FP5 - CP Card must include CPM/IOM
+    "sr-1-46s": {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 48,
-        "cp": {
+        "cps": [
+            {
+            "slot": "A",
             "min_ram": 4,
-            "timos_line": "slot=A chassis=sr-1x-48D card=cpm-1x",
-        },
+            "timos_line": "slot=A chassis=sr-1-46s card=cpm-1x/i40-200g-sfpdd+6-800g-qsfpdd-1",  # CP Card must include CPM/IOM
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
                 "min_ram": 4,
                 **line_card_config(
-                    chassis="sr-1x-48D",
+                    chassis="sr-1-46s",
+                    card="i40-200g-sfpdd+6-800g-qsfpdd-1",
+                    mda="m40-200g-sfpdd+6-800g-qsfpdd-1",
+                ),
+            }
+        ],
+    },
+    # SR-1 FP5 - CP Card must include CPM/IOM
+    "sr-1-92s": {
+        "deployment_model": "distributed",
+        # control plane (CPM)
+        "max_nics": 48,
+        "cps": [
+            {
+            "slot": "A",
+            "min_ram": 4,
+            "timos_line": "slot=A chassis=sr-1-92s card=cpm-1x/i80-200g-sfpdd+12-400g-qsfpdd-1",  # CP Card must include CPM/IOM
+            },
+        ],
+        # line card (IOM/XCM)
+        "lcs": [
+            {
+                "min_ram": 4,
+                **line_card_config(
+                    chassis="sr-1-92s",
+                    card="i80-200g-sfpdd+12-400g-qsfpdd-1",
+                    mda="m80-200g-sfpdd+12-400g-qsfpdd-1",
+                ),
+            }
+        ],
+    },
+    # SR-1 FP5 - CP Card must include CPM/IOM
+    "sr-1x-92s": {
+        "deployment_model": "distributed",
+        # control plane (CPM)
+        "max_nics": 48,
+        "cps": [
+            {
+            "slot": "A",
+            "min_ram": 4,
+            "timos_line": "slot=A chassis=sr-1x-92s card=cpm-1x/i80-200g-sfpdd+12-800g-qsfpdd-1x",  # CP Card must include CPM/IOM
+            },
+        ],
+        # line card (IOM/XCM)
+        "lcs": [
+            {
+                "min_ram": 4,
+                **line_card_config(
+                    chassis="sr-1x-92s",
+                    card="i80-200g-sfpdd+12-800g-qsfpdd-1x",
+                    mda="m80-200g-sfpdd+12-800g-qsfpdd-1x",
+                ),
+            }
+        ],
+    },
+    # SR-1 FP5
+    "sr-1-24d": {
+        "deployment_model": "distributed",
+        # control plane (CPM)
+        "max_nics": 48,
+        "cps": [
+            {
+            "slot": "A",
+            "min_ram": 4,
+            "timos_line": "slot=A chassis=sr-1-24d card=cpm-1x",
+            },
+        ],
+        # line card (IOM/XCM)
+        "lcs": [
+            {
+                "min_ram": 4,
+                **line_card_config(
+                    chassis="sr-1-24d",
+                    card="i24-800g-qsfpdd-1",
+                    mda="m24-800g-qsfpdd-1",
+                ),
+            }
+        ],
+    },
+    # SR-1 FP5
+    "sr-1-48d": {
+        "deployment_model": "distributed",
+        # control plane (CPM)
+        "max_nics": 48,
+        "cps": [
+            {
+            "slot": "A",
+            "min_ram": 4,
+            "timos_line": "slot=A chassis=sr-1-48D card=cpm-1x/i48-400g-qsfpdd-1",  # CP Card must include CPM/IOM
+            },
+        ],
+        # line card (IOM/XCM)
+        "lcs": [
+            {
+                "min_ram": 4,
+                **line_card_config(
+                    chassis="sr-1-48D",
+                    card="i48-400g-qsfpdd-1",
+                    mda="m48-400g-qsfpdd-1",
+                ),
+            }
+        ],
+    },
+    # SR-1 FP5
+    "sr-1x-48d": {
+        "deployment_model": "distributed",
+        # control plane (CPM)
+        "max_nics": 48,
+        "cps": [
+            {
+            "slot": "A",
+            "min_ram": 4,
+            "timos_line": "slot=A chassis=sr-1x-48d card=cpm-1x",
+            },
+        ],
+        # line card (IOM/XCM)
+        "lcs": [
+            {
+                "min_ram": 4,
+                **line_card_config(
+                    chassis="sr-1x-48d",
                     card="i48-800g-qsfpdd-1x",
                     mda="m48-800g-qsfpdd-1x",
                 ),
@@ -431,19 +732,16 @@ SROS_VARIANTS = {
 # SR OS Classic CLI common configuration
 SROS_CL_COMMON_CFG = """
 /configure system name {name}
-/configure system netconf no shutdown
 /configure system security profile \"administrative\" netconf base-op-authorization lock
 /configure system login-control ssh inbound-max-sessions 30
-/configure system management-interface yang-modules no nokia-modules
-/configure system management-interface yang-modules nokia-combined-modules
 /configure system management-interface yang-modules no base-r13-modules
+/configure system netconf auto-config-save
+/configure system netconf no shutdown
 /configure system grpc allow-unsecure-connection
 /configure system grpc gnmi auto-config-save
 /configure system grpc gnmi no shutdown
 /configure system grpc rib-api no shutdown
 /configure system grpc no shutdown
-/configure system netconf auto-config-save
-/configure system netconf no shutdown
 /configure system security profile "administrative" netconf base-op-authorization kill-session
 /configure system security profile "administrative" netconf base-op-authorization lock
 /configure system snmp packet-size 9216
@@ -452,9 +750,10 @@ SROS_CL_COMMON_CFG = """
 /configure system security user "admin" access netconf
 /configure system security user "admin" access console
 /configure system security user "admin" access grpc
-/configure system security user "admin" access snmp
 /configure system security user "admin" access ftp
+/configure system security snmp community "public" r version v2c
 """
+
 
 # SR OS Model-Driven CLI common configuration
 SROS_MD_COMMON_CFG = """
@@ -466,16 +765,37 @@ SROS_MD_COMMON_CFG = """
 /configure system grpc allow-unsecure-connection
 /configure system grpc gnmi auto-config-save true
 /configure system grpc rib-api admin-state enable
-/configure system management-interface netconf admin-state enable
 /configure system management-interface netconf auto-config-save true
 /configure system management-interface snmp packet-size 9216
 /configure system management-interface snmp streaming admin-state enable
 /configure system security user-params local-user user "admin" access console true
 /configure system security user-params local-user user "admin" access ftp true
-/configure system security user-params local-user user "admin" access snmp true
 /configure system security user-params local-user user "admin" access netconf true
 /configure system security user-params local-user user "admin" access grpc true
+/configure system security snmp community "public" access-permissions r
+/configure system security snmp community "public" version v2c
 """
+
+
+# get_version_specific_config returns the version specific configuration
+# based on the release number.
+def get_version_specific_config(major_version: int):
+    # releases <=22 boot with the classic CLI config by default
+    if major_version <= 22:
+        return """
+/configure system management-interface yang-modules no nokia-submodules
+/configure system management-interface yang-modules nokia-combined-modules
+"""
+    # 23.x releases use the Model-Driven CLI by default
+    if major_version == 23:
+        return """
+/configure system management-interface netconf admin-state enable
+"""
+    # releases 24.3.1 and above use a new command to enable netconf server
+    return """
+/configure system management-interface netconf listen admin-state enable
+"""
+
 
 # to allow writing config to tftp location we needed to spin up a normal
 # tftp server in container host system. To access the host from qemu VM
@@ -646,24 +966,26 @@ def gen_bof_config():
 
 class SROS_vm(vrnetlab.VM):
     def __init__(self, username, password, ram, conn_mode, cpu=2, num=0):
+
+        if not cpu or cpu == 0 or cpu == "0":
+            cpu = 2
+
         super().__init__(
             username,
             password,
             disk_image="/sros.qcow2",
             num=num,
             ram=ram,
-            driveif="virtio"
+            driveif="virtio",
+            smp=f"{cpu}"
         )
+
         self.nic_type = "virtio-net-pci"
         self.conn_mode = conn_mode
         self.uuid = "00000000-0000-0000-0000-000000000000"
         self.power = "dc"  # vSR emulates DC only
         self.read_license()
-        if not cpu or cpu == 0 or cpu == "0":
-            cpu = 2
-        self.cpu = cpu
-        self.qemu_args.extend(["-cpu", "host", "-smp", f"{cpu}"])
-
+        
         # override default wait pattern with hash followed by the space
         self.wait_pattern = "# "
 
@@ -885,6 +1207,25 @@ class SROS_vm(vrnetlab.VM):
             # logout at the end of execution
             self.wait_write("/logout")
 
+    @property
+    def ram(self):
+        """Ignore environment variables here, since getMem function is used"""
+        return self._ram
+
+    
+    @property
+    def cpu(self):
+        """Ignore environment variables here, since CPU environment variable is used for number of cpus in getCPU function"""
+    
+        return str(self._cpu)
+    
+    @property
+    def smp(self):
+        """Ignore environment variables here, since CPU environment variable is used for number of cpus in getCPU function"""
+
+
+        return str(self._smp)
+
 
 class SROS_integrated(SROS_vm):
     """Integrated VSR-SIM"""
@@ -892,8 +1233,8 @@ class SROS_integrated(SROS_vm):
     def __init__(
         self, hostname, username, password, mode, num_nics, variant, conn_mode
     ):
-        ram: int = vrnetlab.getMem("integrated", variant.get("min_ram"))
-        cpu: int = vrnetlab.getCpu("integrated", variant.get("cpu"))
+        ram: int = getMem("integrated", variant.get("min_ram"))
+        cpu: int = getCpu("integrated", variant.get("cpu"))
         self.slot: str = variant.get("slot")
 
         super().__init__(
@@ -938,10 +1279,15 @@ class SROS_integrated(SROS_vm):
 
         if any(
             chassis in self.variant["timos_line"]
-            for chassis in ["chassis=ixr-r6", "chassis=ixr-ec", "chassis=ixr-e2"]
+            for chassis in [
+                "chassis=ixr-r6",
+                "chassis=ixr-ec",
+                "chassis=ixr-e2",
+                "chassis=ixr-e2c",
+            ]
         ):
             logger.debug(
-                "detected ixr-r6/ec/ixr-e2 chassis, creating a dummy network device for SFM connection"
+                "detected ixr-r6/ixr-ec/ixr-e2/ixr-e2c chassis, creating a dummy network device for SFM connection"
             )
             res.append(f"-device virtio-net-pci,netdev=dummy,mac={vrnetlab.gen_mac(0)}")
             res.append("-netdev tap,ifname=sfm-dummy,id=dummy,script=no,downscript=no")
@@ -956,8 +1302,8 @@ class SROS_cp(SROS_vm):
         # cp - control plane. role is used to create a separate overlay image name
         self.role = "cp"
          
-        ram: int = vrnetlab.getMem(self.role, cp_config.get("min_ram"))
-        cpu: int = vrnetlab.getCpu(self.role, cp_config.get("cpu"))
+        ram: int = getMem(self.role, cp_config.get("min_ram"))
+        cpu: int = getCpu(self.role, cp_config.get("cpu"))
         self.slot: str = cp_config.get("slot")
 
         #by default slot A is vm num=0. If B, set vm num=99 to avoid conflict with LC slots.
@@ -1041,8 +1387,8 @@ class SROS_lc(SROS_vm):
         # role lc if for a line card. role is used to create a separate overlay image name
         self.role = "lc"
 
-        ram: int = vrnetlab.getMem(self.role, lc_config.get("min_ram"))
-        cpu: int = vrnetlab.getCpu(self.role, lc_config.get("cpu"))
+        ram: int = getMem(self.role, lc_config.get("min_ram"))
+        cpu: int = getCpu(self.role, lc_config.get("cpu"))
 
         super(SROS_lc, self).__init__(
             None,
@@ -1318,11 +1664,10 @@ def getDefaultConfig() -> str:
     """Returns the default configuration for the system based on the SR OS version.
     SR OS >=23 uses model-driven configuration, while SR OS <=22 uses classic configuration.
     """
-
     if SROS_VERSION.major <= 22:
-        return SROS_CL_COMMON_CFG
+        return SROS_CL_COMMON_CFG + get_version_specific_config(SROS_VERSION.major)
 
-    return SROS_MD_COMMON_CFG
+    return SROS_MD_COMMON_CFG + get_version_specific_config(SROS_VERSION.major)
 
 
 if __name__ == "__main__":
@@ -1366,7 +1711,7 @@ if __name__ == "__main__":
             "in.tftpd",
             "--listen",
             "--user",
-            "tftp",
+            "root",
             "-a",
             "0.0.0.0:69",
             "-s",
