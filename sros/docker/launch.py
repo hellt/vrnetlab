@@ -124,7 +124,6 @@ SROS_VARIANTS = {
         "max_nics": 34,  # 24*10 + 8*25G + 2*100G (with connector)
         "cps": [
             {
-                "slot": "A",
                 "min_ram": 3,
                 "timos_line": "slot=A chassis=ixr-e card=cpm-ixr-e",
             },
@@ -183,7 +182,6 @@ SROS_VARIANTS = {
         "max_nics": 54,
         "cps": [
             {
-                "slot": "A",
                 "min_ram": 3,
                 "timos_line": "slot=A chassis=ixr-s card=cpm-ixr-s",
             },
@@ -205,7 +203,6 @@ SROS_VARIANTS = {
         "max_nics": 36,  # 32 * qsfp28 + 4 * qsfpdd
         "cps": [
             {
-                "slot": "A",
                 "min_ram": 3,
                 "timos_line": "chassis=ixr-x slot=A card=cpm-ixr-x/imm32-qsfp28+4-qsfpdd",
             },
@@ -228,7 +225,6 @@ SROS_VARIANTS = {
         "max_nics": 54,  # 6 * qsfpdd + 48 * sfp56
         "cps": [
             {
-                "slot": "A",
                 "min_ram": 3,
                 "timos_line": "chassis=ixr-x slot=A card=cpm-ixr-x/imm6-qsfpdd+48-sfp56",
             },
@@ -251,7 +247,6 @@ SROS_VARIANTS = {
         "max_nics": 36,  # 36 * qsfpdd
         "cps": [
             {
-            "slot": "A",
             "min_ram": 4,
             "timos_line": "chassis=ixr-x3 slot=A card=cpm-ixr-x/imm36-qsfpdd",
             },
@@ -274,7 +269,6 @@ SROS_VARIANTS = {
         "max_nics": 18,
         "cps": [
             {
-            "slot": "A",
             "min_ram": 3,
             "timos_line": "slot=A chassis=ixr-e card=imm14-10g-sfp++4-1g-tx",
             },
@@ -357,7 +351,6 @@ SROS_VARIANTS = {
         "power": {"modules": {"ac/hv": 3, "dc": 4}},
         "cps": [ 
             {
-            "slot": "A",
             "min_ram": 3,
             # The 7750 SR-2s uses an integrated switch fabric module (SFM) design
             "timos_line": "slot=A chassis=sr-2s sfm=sfm-2s card=cpm-2s",
@@ -383,7 +376,6 @@ SROS_VARIANTS = {
         "power": {"modules": {"ac/hv": 3, "dc": 4}},
         "cps": [
             {
-            "slot": "A",
             "min_ram": 4,
             # The 7750 SR-2se uses an integrated switch fabric module (SFM) design
             "timos_line": "slot=A chassis=sr-2se sfm=sfm-2se card=cpm-2se",
@@ -409,7 +401,6 @@ SROS_VARIANTS = {
         "power": {"modules": 10, "shelves": 2},
         "cps": [
             {
-            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=SR-7s sfm=sfm2-s card=cpm2-s",
             },
@@ -437,7 +428,6 @@ SROS_VARIANTS = {
         "power": {"modules": 10, "shelves": 2},
         "cps": [
             {
-            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=SR-7s sfm=sfm-s card=cpm2-s",
             },
@@ -465,7 +455,6 @@ SROS_VARIANTS = {
         "power": {"modules": 10, "shelves": 2},
         "cps": [
             {
-            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=SR-14s sfm=sfm-s card=cpm2-s",
             },
@@ -509,7 +498,6 @@ SROS_VARIANTS = {
         "max_nics": 40,
         "cps": [
             {
-            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1e card=cpm-e",
             },
@@ -529,7 +517,6 @@ SROS_VARIANTS = {
         "max_nics": 12,
         "cps": [
             {
-            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1e card=cpm-e",
             },
@@ -552,7 +539,6 @@ SROS_VARIANTS = {
         "max_nics": 10,
         "cps": [
             {
-            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-a4 card=cpm-a",
             },
@@ -576,7 +562,6 @@ SROS_VARIANTS = {
         "max_nics": 48,
         "cps": [
             {
-            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1-46s card=cpm-1x/i40-200g-sfpdd+6-800g-qsfpdd-1",  # CP Card must include CPM/IOM
             },
@@ -600,7 +585,6 @@ SROS_VARIANTS = {
         "max_nics": 48,
         "cps": [
             {
-            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1-92s card=cpm-1x/i80-200g-sfpdd+12-400g-qsfpdd-1",  # CP Card must include CPM/IOM
             },
@@ -624,7 +608,6 @@ SROS_VARIANTS = {
         "max_nics": 48,
         "cps": [
             {
-            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1x-92s card=cpm-1x/i80-200g-sfpdd+12-800g-qsfpdd-1x",  # CP Card must include CPM/IOM
             },
@@ -648,7 +631,6 @@ SROS_VARIANTS = {
         "max_nics": 48,
         "cps": [
             {
-            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1-24d card=cpm-1x",
             },
@@ -672,7 +654,6 @@ SROS_VARIANTS = {
         "max_nics": 48,
         "cps": [
             {
-            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1-48D card=cpm-1x/i48-400g-qsfpdd-1",  # CP Card must include CPM/IOM
             },
@@ -696,7 +677,6 @@ SROS_VARIANTS = {
         "max_nics": 48,
         "cps": [
             {
-            "slot": "A",
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1x-48d card=cpm-1x",
             },
@@ -828,14 +808,6 @@ def parse_variant_line(cfg, obj, skip_nics=False):
 
         if "ram=" in elem:
             obj["min_ram"] = elem.split("=")[1]
-            continue
-
-        # Optional CF. This indicates the SIZE to be passed directly to qemu-img create (eg: cf1=1G)
-        if "cf1=" in elem:
-            obj["cf1"] = elem.split("=")[1]
-            continue
-        if "cf2=" in elem:
-            obj["cf2"] = elem.split("=")[1]
             continue
 
         if "slot=" in elem:
@@ -991,6 +963,7 @@ class SROS_vm(vrnetlab.VM):
 
     def attach_cf(self, cfname, size):
         """Attach extra CF. Create if needed."""
+        cfname=cfname.lower()
         path = f"/tftpboot/{cfname}_{self.slot}.qcow2"
 
         if not os.path.exists(path):
@@ -1235,7 +1208,7 @@ class SROS_integrated(SROS_vm):
     ):
         ram: int = getMem("integrated", variant.get("min_ram"))
         cpu: int = getCpu("integrated", variant.get("cpu"))
-        self.slot: str = variant.get("slot")
+        self.slot: str = "A"
 
         super().__init__(
             username,
@@ -1257,10 +1230,11 @@ class SROS_integrated(SROS_vm):
         self.variant = variant
         self.hostname = hostname
 
-        for cf in ["cf1", "cf2"]:
-            size: str = variant.get(cf)
-            if size is not None:
-                self.attach_cf(cfname=cf, size=size)
+        # Optional CFs indicated by environment variable. The value indicate the SIZE to be passed directly to qemu-img create (eg: CF1=1G)
+        for cf in ["CF1", "CF2"]:
+            if cf in os.environ:
+                disk_size = os.getenv(cf)
+                self.attach_cf(cfname=cf, size=disk_size)
 
     def gen_mgmt(self):
         """
@@ -1335,11 +1309,12 @@ class SROS_cp(SROS_vm):
             f"system-base-mac={system_mac} {cp_config['timos_line']}"
         ]
         self.logger.info("Acting timos line: {}".format(self.smbios))
-
-        for cf in ["cf1", "cf2"]:
-            size: str = cp_config.get(cf)
-            if size is not None:
-                self.attach_cf(cfname=cf, size=size)
+        
+        # Optional CFs indicated by environment variable. The value indicate the SIZE to be passed directly to qemu-img create (eg: CF1=1G)
+        for cf in ["CF1", "CF2"]:
+            if cf in os.environ:
+                disk_size = os.getenv(cf)
+                self.attach_cf(cfname=cf, size=disk_size)
 
     def start(self):
         # use parent class start() function
@@ -1459,6 +1434,11 @@ class SROS(vrnetlab.VR):
                 variant["lcs"] = [
                     parse_variant_line(lc.get("timos_line", ""), lc)
                     for lc in variant["lcs"]
+                ]
+            if variant.get("cps", None):
+                variant["cps"] = [
+                    parse_variant_line(cp.get("timos_line", ""), cp)
+                    for cp in variant["cps"]
                 ]
         else:
             variant = parse_custom_variant(variant_name)
