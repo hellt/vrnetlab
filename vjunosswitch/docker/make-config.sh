@@ -28,7 +28,7 @@ STAGING=`mktemp -d -p /var/tmp`
 MNTDIR=`mktemp -d -p /var/tmp`
 mkdir $STAGING/config
 cp -v $1 $STAGING/config
-qemu-img create -f qcow2 $2 1M
+qemu-img create -f raw $2 1M
 LOOPDEV=`losetup --show -f $2`
 if [ $? != 0 ]; then
 	cleanup_failed;
