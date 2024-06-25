@@ -74,7 +74,7 @@ cp: cpu=2 ram=4 chassis=ixr-e slot=A card=cpm-ixr-e ___ lc: cpu=2 ram=4 max_nics
 
 Custom variants WILL NOT have cards/mda auto-configured, user needs to configure those manually once the node finishes boot process.
 
-### Additional CFs
+## Additional CFs
 
 Additional Compact Flash disks (CFs) can be added via `CFX=SIZE` ENV VARs, where
 
@@ -83,11 +83,11 @@ Additional Compact Flash disks (CFs) can be added via `CFX=SIZE` ENV VARs, where
 
 ```bash
 r01:
-      env:
-        CF2: 2G
-        CF1: 2G
-      type: sr-1
-      kind: nokia_sros
+  env:
+    CF2: 2G
+    CF1: 2G
+  type: sr-1
+  kind: nokia_sros
 ```
 
 Disk(s) are created in the by the `<clab-dir>/<node-name>/tftpboot/` path with a filename `cfX_SLOT.qcow2`. If disk file already exists it is reused without any modification.
@@ -101,6 +101,13 @@ r01/
     └── license.txt
 ```
 NOTE: If only CF2 is provisioned, node will remap it to CF1.
+
+## Console access
+
+Telnet ports in the range 50XX are reserved for VM consoles:
+* Port 5000 -> CPM A
+* Port 5099 -> CPM B
+* Ports 5001 to 5098 -> Line Cards
 
 ## Usage with containerlab
 
