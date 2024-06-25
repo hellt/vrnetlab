@@ -43,6 +43,7 @@ class VJUNOSEVOLVED_vm(vrnetlab.VM):
             password,
             disk_image=disk_image,
             ram=8192,
+            driveif="virtio",
             cpu="IvyBridge,vme=on,ss=on,vmx=on,f16c=on,rdrand=on,hypervisor=on,arat=on,tsc-adjust=on,umip=on,arch-capabilities=on,pdpe1gb=on,skip-l1dfl-vmentry=on,pschange-mc-no=on,bmi1=off,avx2=off,bmi2=off,erms=off,invpcid=off,rdseed=off,adx=off,smap=off,xsaveopt=off,abm=off,svm=off",
             smp="4,sockets=1,cores=4,threads=1"
         )
@@ -74,8 +75,8 @@ class VJUNOSEVOLVED_vm(vrnetlab.VM):
         # generate UUID to attach
         self.qemu_args.extend(["-uuid", str(uuid.uuid4())])
 
-        # extend QEMU args with device USB details
-        self.qemu_args.extend(["-device", "piix3-usb-uhci,id=usb,bus=pci.0,addr=0x1.0x2"])
+        # extend QEMU args with device USB details, xchi is the most virtualisation-friendly
+        self.qemu_args.extend(["-device", "qemu-xhci,id=usb,bus=pci.0,addr=0x1.0x2"])
 
         # mount config disk with juniper.conf base configs
         self.qemu_args.extend([
@@ -90,7 +91,10 @@ class VJUNOSEVOLVED_vm(vrnetlab.VM):
         self.num_nics = 17
         self.hostname = hostname
         self.smbios = [
-            "type=0,vendor=Bochs,version=Bochs", "type=3,manufacturer=Bochs", "type=1,manufacturer=Bochs,product=Bochs,serial=chassis_no=0:slot=0:type=1:assembly_id=0x0D20:platform=251:master=0:channelized=no"            ]
+            "type=0,vendor=Bochs,version=Bochs",
+            "type=3,manufacturer=Bochs",
+            "type=1,manufacturer=Bochs,product=Bochs,serial=chassis_no=0:slot=0:type=1:assembly_id=0x0D20:platform=251:master=0:channelized=no"
+        ]
         self.conn_mode = conn_mode
 
     def startup_config(self):
