@@ -75,7 +75,7 @@ class VJUNOSEVOLVED_vm(vrnetlab.VM):
         # generate UUID to attach
         self.qemu_args.extend(["-uuid", str(uuid.uuid4())])
 
-        # extend QEMU args with device USB details, xchi is the most virtualisation-friendly
+        # extend QEMU args with device USB details, xhci is the most virtualisation-friendly
         self.qemu_args.extend(["-device", "qemu-xhci,id=usb,bus=pci.0,addr=0x1.0x2"])
 
         # mount config disk with juniper.conf base configs
