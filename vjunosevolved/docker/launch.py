@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import crypt
 import datetime
 import logging
 import os
@@ -9,6 +8,8 @@ import signal
 import subprocess
 import sys
 import uuid
+
+from passlib.hash import sha512_crypt
 
 import vrnetlab
 
@@ -59,7 +60,7 @@ class VJUNOSEVOLVED_vm(vrnetlab.VM):
         # device hostname
         self.hostname = hostname
         # create SHA-512 hash of the password
-        password_hash = crypt.crypt("admin@123", crypt.mksalt(crypt.METHOD_SHA512))
+        password_hash = sha512_crypt.hash("admin@123")
 
         # read init.conf configuration file to replace hostname placehodler
         # with given hostname
