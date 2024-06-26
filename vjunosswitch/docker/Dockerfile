@@ -8,7 +8,7 @@ RUN apt-get update -qy \
     dosfstools \
     bridge-utils \
     iproute2 \
-    python3-ipy \
+    python3 \
     socat \
     ssh \
     qemu-kvm \
