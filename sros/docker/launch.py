@@ -911,7 +911,7 @@ class SROS_vm(vrnetlab.VM):
         self.uuid = "00000000-0000-0000-0000-000000000000"
         self.power = "dc"  # vSR emulates DC only
         self.read_license()
-        
+
         # override default wait pattern with hash followed by the space
         self.wait_pattern = "# "
 
@@ -1132,13 +1132,13 @@ class SROS_vm(vrnetlab.VM):
         """Ignore environment variables here, since getMem function is used"""
         return self._ram
 
-    
+
     @property
     def cpu(self):
         """Ignore environment variables here, since CPU environment variable is used for number of cpus in getCPU function"""
-    
+
         return str(self._cpu)
-    
+
     @property
     def smp(self):
         """Ignore environment variables here, since CPU environment variable is used for number of cpus in getCPU function"""
@@ -1247,7 +1247,7 @@ class SROS_cp(SROS_vm):
             f"system-base-mac={vrnetlab.gen_mac(0)} {variant['cp']['timos_line']}"
         ]
         self.logger.info("Acting timos line: {}".format(self.smbios))
-        
+
         # Optional CFs indicated by environment variable. The value indicate the SIZE to be passed directly to qemu-img create (eg: CF1=1G)
         for cf in ["CF1", "CF2"]:
             if cf in os.environ:
@@ -1514,7 +1514,7 @@ class SROS(vrnetlab.VR):
     def extractVersion(self):
         """extractVersion extracts the SR OS version from the qcow2 image name"""
         # https://regex101.com/r/SPefOu/1
-        pattern = r"\S+-((\d{1,3})\.(\d{1,2})\.\w(\d{1,2}))\.qcow2"
+        pattern = r"\S+-((\d{1,3})\.(\d{1,2})\.\w(\d{1,2}(?:-\d{1,2})?))\.qcow2"
         match_found = False
 
         for e in os.listdir("/"):
@@ -1526,7 +1526,7 @@ class SROS(vrnetlab.VR):
                 SROS_VERSION.version = str(match.group(1))
                 SROS_VERSION.major = int(match.group(2))
                 SROS_VERSION.minor = int(match.group(3))
-                SROS_VERSION.patch = int(match.group(4))
+                SROS_VERSION.patch = str(match.group(4))
                 self.logger.info(f"Parsed SR OS version: {SROS_VERSION}")
 
                 match_found = True
