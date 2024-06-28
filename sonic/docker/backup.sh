@@ -1,7 +1,7 @@
 #!/bin/bash
 
 DEFAULT_USER="admin"
-DEFAULT_PASSWORD="YourPaSsWoRd"
+DEFAULT_PASSWORD="admin"
 REMOTE_FILE="/etc/sonic/config_db.json"
 TMP_FILE="/tmp/${REMOTE_FILE##*/}"
 BACKUP_FILE="/config/${REMOTE_FILE##*/}"
@@ -31,9 +31,9 @@ handle_args() {
     if [ -z "$password" ] ; then
         password=$DEFAULT_PASSWORD
     fi
-    
-    SSH_CMD="sshpass -p $password ssh -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-    SCP_CMD="sshpass -p $password scp -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+
+    SSH_CMD="sshpass -p $password ssh -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2022"
+    SCP_CMD="sshpass -p $password scp -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -P 2022"
     HOST="$user@127.0.0.1"
 
     # Parse commands
@@ -56,8 +56,8 @@ handle_args() {
 usage() {
 	echo "Usage: $(basename $0) [-u USERNAME] [-p PASSWORD] COMMAND"
     echo "Options:"
-    echo "  -u USERNAME    VM SSH username (default: admin)"
-    echo "  -p PASSWORD    VM SSH password (default: YourPaSsWoRd)"
+    echo "  -u USERNAME    VM SSH username (default: $DEFAULT_USER)"
+    echo "  -p PASSWORD    VM SSH password (default: $DEFAULT_PASSWORD)"
     echo
     echo "Commands:"
     echo "  backup         Backup VM $REMOTE_FILE directory to $BACKUP_FILE"

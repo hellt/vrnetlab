@@ -11,7 +11,8 @@ import subprocess
 import vrnetlab
 
 CONFIG_FILE = "/config/config_db.json"
-
+DEFAULT_USER="admin"
+DEFAULT_PASSWORD="YourPaSsWoRd"
 
 def handle_SIGCHLD(_signal, _frame):
     os.waitpid(-1, os.WNOHANG)
@@ -65,8 +66,8 @@ class SONiC_vm(vrnetlab.VM):
 
             # Login
             self.wait_write("\r", None)
-            self.wait_write(self.username, wait="login:")
-            self.wait_write(self.password, wait="Password:")
+            self.wait_write(DEFAULT_USER, wait="login:")
+            self.wait_write(DEFAULT_PASSWORD, wait="Password:")
             self.wait_write("", wait="%s@" %(self.username))
             self.logger.info("Login completed")
 
@@ -98,9 +99,8 @@ class SONiC_vm(vrnetlab.VM):
         """
         self.logger.info("applying bootstrap configuration")
         self.wait_write("sudo -i", "$")
-        self.wait_write("ifconfig eth0 10.0.0.15 netmask 255.255.255.0", "#")
-        # Sometimes the password is expired and must be changed
-        self.wait_write("passwd %s" %(self.username))
+        self.wait_write("/usr/sbin/ip address add 10.0.0.15/24 dev eth0", "#")
+        self.wait_write("passwd -q %s" %(self.username))
         self.wait_write(self.password, "New password:")
         self.wait_write(self.password, "password:")
         self.wait_write("sleep 1", "#")
@@ -120,6 +120,7 @@ class SONiC_vm(vrnetlab.VM):
         subprocess.run(
             f"/backup.sh -u {self.username} -p {self.password} restore",
             check=True,
+            shell=True
         )
 
 
@@ -134,7 +135,7 @@ if __name__ == '__main__':
     parser.add_argument("--trace", action="store_true", help="enable trace level logging")
     parser.add_argument("--hostname", default="sonic", help="SONiC hostname")
     parser.add_argument("--username", default="admin", help="Username")
-    parser.add_argument("--password", default="YourPaSsWoRd", help="Password")
+    parser.add_argument("--password", default="admin", help="Password")
     parser.add_argument("--connection-mode", default="tc", help="Connection mode to use in the datapath")
     args = parser.parse_args()
 
