@@ -13,10 +13,10 @@ import vrnetlab
 CONFIG_FILE = "/config/config_db.json"
 
 
-def handle_SIGCHLD(signal, frame):
+def handle_SIGCHLD(_signal, _frame):
     os.waitpid(-1, os.WNOHANG)
 
-def handle_SIGTERM(signal, frame):
+def handle_SIGTERM(_signal, _frame):
     sys.exit(0)
 
 signal.signal(signal.SIGINT, handle_SIGTERM)
@@ -60,28 +60,27 @@ class SONiC_vm(vrnetlab.VM):
             return
 
         ridx, match, res = self.tn.expect([b"login:"], 1)
-        if match: # got a match!
-            if ridx == 0: # login
-                self.logger.info("VM started")
+        if match and ridx == 0: # login
+            self.logger.info("VM started")
 
-                # Login
-                self.wait_write("\r", None)
-                self.wait_write(self.username, wait="login:")
-                self.wait_write(self.password, wait="Password:")
-                self.wait_write("", wait="%s@" %(self.username))
-                self.logger.info("Login completed")
+            # Login
+            self.wait_write("\r", None)
+            self.wait_write(self.username, wait="login:")
+            self.wait_write(self.password, wait="Password:")
+            self.wait_write("", wait="%s@" %(self.username))
+            self.logger.info("Login completed")
 
-                # run main config!
-                self.bootstrap_config()
-                self.startup_config()
-                # close telnet connection
-                self.tn.close()
-                # startup time?
-                startup_time = datetime.datetime.now() - self.start_time
-                self.logger.info("Startup complete in: %s" % startup_time)
-                # mark as running
-                self.running = True
-                return
+            # run main config!
+            self.bootstrap_config()
+            self.startup_config()
+            # close telnet connection
+            self.tn.close()
+            # startup time?
+            startup_time = datetime.datetime.now() - self.start_time
+            self.logger.info("Startup complete in: %s" % startup_time)
+            # mark as running
+            self.running = True
+            return
 
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
@@ -120,7 +119,6 @@ class SONiC_vm(vrnetlab.VM):
 
         subprocess.run(
             f"/backup.sh -u {self.username} -p {self.password} restore",
-            shell=True,
             check=True,
         )
 
