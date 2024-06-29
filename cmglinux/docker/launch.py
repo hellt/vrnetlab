@@ -69,7 +69,7 @@ class CmgLinux_vm(vrnetlab.VM):
                 disk_image = "/" + e
 
         super(CmgLinux_vm, self).__init__(
-            username, password, disk_image=disk_image, ram=6144, smp=4
+            username, password, disk_image=disk_image, ram=6144, smp="4"
         )
 
         self.num_nics = nics
@@ -126,7 +126,8 @@ class CmgLinux_vm(vrnetlab.VM):
 
         return user_data
 
-    def _update_meta_data(self, meta_data: dict) -> dict:
+    @staticmethod
+    def _update_meta_data(meta_data: dict) -> dict:
         if "uuid" not in meta_data:
             meta_data["uuid"] = "00000000-0000-0000-0000-000000000000"
 
@@ -187,10 +188,10 @@ class CmgLinux_vm(vrnetlab.VM):
             json.dump(meta_data, f, indent=2)
 
         # Create seeds.iso or config_drive.iso
-        args = shlex.split(
+        cmd_args = shlex.split(
             f"mkisofs -J -l -R -V config-2 -iso-level 4 -o {self.cfg_drive_iso_path} /iso_drive"
         )
-        subprocess.Popen(args)
+        subprocess.Popen(cmd_args)
 
     def bootstrap_spin(self):
         """This function should be called periodically to do work."""
@@ -203,18 +204,18 @@ class CmgLinux_vm(vrnetlab.VM):
             return
 
         (ridx, match, res) = self.tn.expect([b"login: "], 1)
-        if match:  # got a match!
-            if ridx == 0:  # login
-                self.logger.debug("matched, login: ")
-                self.wait_write("", wait=None)
+        # got am match and login
+        if match and ridx == 0:
+            self.logger.debug("matched, login: ")
+            self.wait_write("", wait=None)
 
-                self.running = True
-                # close telnet connection
-                self.tn.close()
-                # startup time?
-                startup_time = datetime.datetime.now() - self.start_time
-                self.logger.info("Startup complete in: %s", startup_time)
-                return
+            self.running = True
+            # close telnet connection
+            self.tn.close()
+            # startup time?
+            startup_time = datetime.datetime.now() - self.start_time
+            self.logger.info("Startup complete in: %s", startup_time)
+            return
 
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
