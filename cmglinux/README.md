@@ -14,6 +14,8 @@ to run a CMG Linux VM in the same way Vrnetlab has done.
 It is required to provide CMG Linux qcow2 image to build the docker image.
 Nokia representative can provide the qcow2 file.
 
+Make sure that your python virtualenv has `yaml` package installed.
+
 Copy the `cmg-linux.qcow2` file in `vrnetlab/cmglinux` directory
 and rename the file by appending the version to it.
 For example, for CMG Linux version 24.3.r1,
@@ -26,7 +28,8 @@ You can tag it with something else. for example, `cmglinux:<version>`.
 
 ## Host requirements
 
-* 4 Vcpus,  6 GB RAM
+* 4 vCPU
+* 6 GB RAM
 
 ## Configuration
 
