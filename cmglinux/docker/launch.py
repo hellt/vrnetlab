@@ -11,9 +11,8 @@ import signal
 import subprocess
 import sys
 
-import yaml
-
 import vrnetlab
+import yaml
 
 DEFAULT_IFCFG_ETH0 = """
 DEVICE=eth0

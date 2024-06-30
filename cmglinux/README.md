@@ -1,6 +1,6 @@
-# CmgLinux VM
+# CMG Linux VM
 
-##  Introduction
+## Introduction
 
 CMG Linux is utilized as a DB VM as one of Nokia MAG-C VMs.
 The image of CMG Linux is released in qcow2 format.
@@ -9,7 +9,7 @@ then CMG Linux cannot be containerized because docker does not run systemd insid
 Given this reasoning, the approach to containerized CMG Linux is to create a container
 to run a CMG Linux VM in the same way Vrnetlab has done.
 
-# Build the docker image
+## Build the docker image
 
 It is required to provide CMG Linux qcow2 image to build the docker image.
 Nokia representative can provide the qcow2 file.
@@ -23,7 +23,6 @@ The version 24.3.R1 will be used as a container image tag.
 Run `make docker-image` to start the build process.
 The resulting image is called `vrnetlab/cmglinux:<version>`.
 You can tag it with something else. for example, `cmglinux:<version>`.
-
 
 ## Host requirements
 
