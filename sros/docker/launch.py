@@ -1075,7 +1075,7 @@ class SROS_vm(vrnetlab.VM):
     def persistBofAndConfig(self):
         """ "Persist bof and config"""
         if SROS_VERSION.magc:
-            self.wait_write("/bof save cf3:/bof.cfg")
+            self.wait_write("/bof save cf3:")
             self.wait_write("/admin save")
         elif SROS_VERSION.major <= 22:
             self.wait_write("/bof save")
