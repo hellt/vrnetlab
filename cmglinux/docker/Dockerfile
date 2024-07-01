@@ -1,7 +1,8 @@
 FROM public.ecr.aws/docker/library/debian:bookworm-slim
-LABEL org.opencontainers.image.authors="roman@dodin.dev"
 
 ARG DEBIAN_FRONTEND=noninteractive
+ARG DISK_SIZE=4G
+
 RUN apt-get update -qy \
    && apt-get install -y --no-install-recommends \
    bridge-utils \
@@ -9,19 +10,23 @@ RUN apt-get update -qy \
    socat \
    qemu-kvm \
    tcpdump \
-   tftpd-hpa \
    ssh \
    inetutils-ping \
    dnsutils \
    iptables \
    nftables \
    telnet \
+   genisoimage \
+   python3-yaml \
+   sshpass \
    && rm -rf /var/lib/apt/lists/*
 
 ARG IMAGE
 COPY $IMAGE* /
 COPY *.py /
 
-EXPOSE 22 80 443 161/udp 830 5000 10000-10099 57400
+# RUN qemu-img resize /${IMAGE} ${DISK_SIZE}
+
+EXPOSE 22 5000 10000-10099
 HEALTHCHECK CMD ["/healthcheck.py"]
 ENTRYPOINT ["/launch.py"]
