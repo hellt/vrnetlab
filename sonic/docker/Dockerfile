@@ -1,17 +1,17 @@
-FROM debian:bookworm-slim
+FROM public.ecr.aws/docker/library/debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update -qy \
-   && apt-get upgrade -qy \
-   && apt-get install -y \
+   && apt-get install -y --no-install-recommends \
    bridge-utils \
    iproute2 \
    python3-ipy \
+   qemu-kvm \
+   qemu-utils \
    socat \
    ssh \
    sshpass \
-   qemu-kvm \
    && rm -rf /var/lib/apt/lists/*
 
 ARG IMAGE

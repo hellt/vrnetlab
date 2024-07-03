@@ -7,8 +7,9 @@ The scripts in this directory are based on FreeBSD and VSRX kinds.
 
 ## Building the docker image
 
-Download the latest `sonic-vs.img.gz` image from https://sonic.software/
-unompress and place it in this directory. Rename the file to `sonic-vs-[version].qcow2` and reference that file in the `Makefile`.
+Download the latest `sonic-vs.img.gz` image using the options documented on the [containerlab.dev website](https://containerlab.dev/manual/kinds/sonic-vm/).
+
+Uncompress and place the `.img` file in this directory. Rename the file to `sonic-vs-[version].qcow2` and run `make`.
 
 After typing `make`, a new image will appear called `vrnetlab/vr-sonic` tagged with version.
 Run `docker images` to confirm this.
@@ -26,4 +27,4 @@ Full startup configuration can be passed by mounting it under `/config/config_db
 
 ## Contact
 
-The author of this code is Adam Kulagowski (adam.kulagowski@codilime.com), CodiLime (codilime.com), feel free to reach him in case of problems.
+The author of this code is Adam Kulagowski (<adam.kulagowski@codilime.com>), CodiLime (codilime.com), feel free to reach him in case of problems.
