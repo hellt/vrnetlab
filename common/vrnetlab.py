@@ -446,11 +446,15 @@ class VM:
         res.append(
             "user,id=p00,net=10.0.0.0/24,"
             "tftp=/tftpboot,"
-            "hostfwd=tcp::2022-10.0.0.15:22,"
-            "hostfwd=udp::2161-10.0.0.15:161,"
-            "hostfwd=tcp::2830-10.0.0.15:830,"
-            "hostfwd=tcp::2080-10.0.0.15:80,"
-            "hostfwd=tcp::2443-10.0.0.15:443"
+            "hostfwd=tcp::2022-10.0.0.15:22,"  # ssh
+            "hostfwd=udp::2161-10.0.0.15:161,"  # snmp
+            "hostfwd=tcp::2830-10.0.0.15:830,"  # netconf
+            "hostfwd=tcp::2080-10.0.0.15:80,"  # http
+            "hostfwd=tcp::2443-10.0.0.15:443"  # https
+            "hostfwd=tcp::59339-10.0.0.15:9339"  # iana gnmi/gnoi
+            "hostfwd=tcp::47400-10.0.0.15:57400"  # nokia gnmi/gnoi
+            "hostfwd=tcp::56030-10.0.0.15:6030"  # gnmi/gnoi arista
+            "hostfwd=tcp::52676-10.0.0.15:32676"  # gnmi/gnoi juniper
         )
         return res
 
@@ -825,6 +829,26 @@ class VR:
             run_command(
                 ["socat", "TCP-LISTEN:443,fork", "TCP:127.0.0.1:2443"], background=True
             )
+            # IANA gnmi/gnoi
+            run_command(
+                ["socat", "TCP-LISTEN:9339,fork", "TCP:127.0.0.1:59339"],
+                background=True,
+            )
+            # Nokia gnmi/gnoi
+            run_command(
+                ["socat", "TCP-LISTEN:57400,fork", "TCP:127.0.0.1:47400"],
+                background=True,
+            )
+            # Arista gnmi/gnoi
+            run_command(
+                ["socat", "TCP-LISTEN:57400,fork", "TCP:127.0.0.1:47400"],
+                background=True,
+            )
+            # Juniper gnmi/gnoi
+            run_command(
+                ["socat", "TCP-LISTEN:32676,fork", "TCP:127.0.0.1:52676"],
+                background=True,
+            )
 
         started = False
         while True:
@@ -855,6 +879,7 @@ def get_digits(input_str: str) -> int:
 
     non_string_chars = re.findall(r"\d", input_str)
     return int("".join(non_string_chars))
+
 
 class VR_Installer:
     def __init__(self):
