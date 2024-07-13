@@ -1621,19 +1621,23 @@ def create_socat_fwd():
         vrnetlab.run_command(
             [
                 "socat",
-                f"UDP4-LISTEN:{port},fork,reuseaddr,bind='{ipv4}'",
+                f"UDP4-LISTEN:{port},fork,bind='{ipv4}'",
                 f"UDP4:{SROS_MGMT_V4_ADDR}:{port}",
             ],
             background=True,
         )
-    vrnetlab.run_command(
-        [
-            "socat",
-            f"UDP6-LISTEN:{port},fork,reuseaddr,bind='{ipv6}'",
-            f"UDP6:'{SROS_MGMT_V6_ADDR}':{port}",
-        ],
-        background=True,
-    )
+        # for some reason socat does not allow to bind to an address and specify port in the same command for udp6
+        # waiting for comments from maintainers
+        # socat UDP6-LISTEN:161,bind='2001:172:20:20::a' UDP6:'200::1':161
+        # 2024/07/13 18:28:29 socat[397] E port specification not allowed in this bind option
+        # vrnetlab.run_command(
+        #     [
+        #         "socat",
+        #         f"UDP6-LISTEN:{port},fork,bind='{ipv6}'",
+        #         f"UDP6:'{SROS_MGMT_V6_ADDR}':{port}",
+        #     ],
+        #     background=True,
+        # )
 
 
 if __name__ == "__main__":
