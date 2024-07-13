@@ -10,6 +10,7 @@ import sys
 from dataclasses import dataclass
 from typing import Dict
 
+import netifaces
 import vrnetlab
 
 
@@ -1233,7 +1234,7 @@ class SROS_cp(SROS_vm):
         cpu: int = getCpu(self.role, variant.get("cp").get("cpu"))
         slot: str = variant.get("cp").get("slot")
 
-        super(SROS_cp, self).__init__(
+        super().__init__(
             username,
             password,
             cpu=cpu,
@@ -1307,7 +1308,7 @@ class SROS_lc(SROS_vm):
         ram: int = getMem(self.role, lc_config.get("min_ram"))
         cpu: int = getCpu(self.role, lc_config.get("cpu"))
 
-        super(SROS_lc, self).__init__(
+        super().__init__(
             None,
             None,
             ram=ram,
@@ -1563,6 +1564,78 @@ def getDefaultConfig() -> str:
     return SROS_MD_COMMON_CFG + get_version_specific_config(SROS_VERSION.major)
 
 
+def create_socat_fwd():
+    """Create a socat forwarding rules for management interface"""
+    tcp_ports = ["20", "21", "22", "25", "80", "443", "8080", "9339", "57400"]
+    udp_ports = ["53", "161", "162"]
+
+    def get_ip_addresses(interface="eth0"):
+        """
+        Get the IPv4 and IPv6 addresses for the specified interface.
+        Used to fetch v4/6 address of eth0 to bind socat to this address.
+        """
+        ipv4_address = None
+        ipv6_address = None
+
+        # Fetch the addresses for the specified interface
+        try:
+            addresses = netifaces.ifaddresses(interface)
+
+            # Get the IPv4 address
+            if netifaces.AF_INET in addresses:
+                ipv4_address = addresses[netifaces.AF_INET][0]["addr"]
+
+            # Get the IPv6 address
+            if netifaces.AF_INET6 in addresses:
+                ipv6_address = addresses[netifaces.AF_INET6][0]["addr"]
+        except ValueError as exc:
+            raise ValueError(f"Interface {interface} not found") from exc
+
+        return ipv4_address, ipv6_address
+
+    # Example usage
+    ipv4, ipv6 = get_ip_addresses()
+
+    print(ipv4, ipv6)
+
+    # run socat forwarding for each port both with v4 and v6
+    for port in tcp_ports:
+        vrnetlab.run_command(
+            [
+                "socat",
+                f"TCP4-LISTEN:{port},fork,reuseaddr,bind='{ipv4}'",
+                f"TCP4:{SROS_MGMT_V4_ADDR}:{port}",
+            ],
+            background=True,
+        )
+        vrnetlab.run_command(
+            [
+                "socat",
+                f"TCP6-LISTEN:{port},fork,reuseaddr,bind='{ipv6}'",
+                f"TCP6:'{SROS_MGMT_V6_ADDR}':{port}",
+            ],
+            background=True,
+        )
+
+    for port in udp_ports:
+        vrnetlab.run_command(
+            [
+                "socat",
+                f"UDP4-LISTEN:{port},fork,reuseaddr,bind='{ipv4}'",
+                f"UDP4:{SROS_MGMT_V4_ADDR}:{port}",
+            ],
+            background=True,
+        )
+    vrnetlab.run_command(
+        [
+            "socat",
+            f"UDP6-LISTEN:{port},fork,reuseaddr,bind='{ipv6}'",
+            f"UDP6:'{SROS_MGMT_V6_ADDR}':{port}",
+        ],
+        background=True,
+    )
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -1618,45 +1691,13 @@ if __name__ == "__main__":
     # make tftpboot writable for saving SR OS config
     vrnetlab.run_command(["chmod", "-R", "777", "/tftpboot"])
 
-    # kill origin socats since we use bridge interface
-    # for SR OS management interface
-    # thus we need to forward connections to a different address
-    vrnetlab.run_command(["pkill", "socat"])
-
-    # redirecting incoming tcp traffic (except serial port 5000) from eth0 to SR management interface
-    vrnetlab.run_command(
-        f"iptables-nft -t nat -A PREROUTING -i eth0 -p tcp ! --dport 5000 -j DNAT --to-destination {SROS_MGMT_V4_ADDR}".split()
-    )
-    vrnetlab.run_command(
-        f"ip6tables-nft -t nat -A PREROUTING -i eth0 -p tcp ! --dport 5000 -j DNAT --to-destination {SROS_MGMT_V6_ADDR}".split()
-    )
-    # same redirection but for UDP
-    vrnetlab.run_command(
-        f"iptables-nft -t nat -A PREROUTING -i eth0 -p udp -j DNAT --to-destination {SROS_MGMT_V4_ADDR}".split()
-    )
-    vrnetlab.run_command(
-        f"ip6tables-nft -t nat -A PREROUTING -i eth0 -p udp -j DNAT --to-destination {SROS_MGMT_V6_ADDR}".split()
-    )
-    # masquerading the incoming traffic so SR OS is able to reply back
-    vrnetlab.run_command(
-        "iptables-nft -t nat -A POSTROUTING -o br-mgmt -j MASQUERADE".split()
-    )
-    vrnetlab.run_command(
-        "ip6tables-nft -t nat -A POSTROUTING -o br-mgmt -j MASQUERADE".split()
-    )
-    # allow sros breakout to management network by NATing via eth0
-    vrnetlab.run_command(
-        "iptables-nft -t nat -A POSTROUTING -o eth0 -j MASQUERADE".split()
-    )
-    vrnetlab.run_command(
-        "ip6tables-nft -t nat -A POSTROUTING -o eth0 -j MASQUERADE".split()
-    )
-
     logger.debug(
         f"acting flags: username '{args.username}', password '{args.password}', connection-mode '{args.connection_mode}', variant '{args.variant}'"
     )
 
     logger.debug(f"Environment variables: {os.environ}")
+
+    create_socat_fwd()
 
     vrnetlab.boot_delay()
 
@@ -1668,4 +1709,4 @@ if __name__ == "__main__":
         variant_name=args.variant,
         conn_mode=args.connection_mode,
     )
-    ia.start(add_fwd_rules=False)
+    ia.start()
