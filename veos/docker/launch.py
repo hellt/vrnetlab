@@ -153,30 +153,6 @@ class VEOS_vm(vrnetlab.VM):
         self.wait_write("copy running-config startup-config")
 
 
-    def gen_mgmt(self):
-        """
-        Augment base gen_mgmt function to add gnmi and socat forwarding
-        """
-        res = []
-
-        # vEOS-lab requires its Ma1 interface to be the first in the bus, so let's hardcode it (addr 0x2)
-        res.append("-device")
-        res.append(
-            self.nic_type + f",netdev=p00,mac={vrnetlab.gen_mac(0)},bus=pci.1,addr=0x2"
-        )
-
-        res.append("-netdev")
-        res.append(
-            "user,id=p00,net=10.0.0.0/24,tftp=/tftpboot,hostfwd=tcp::2022-10.0.0.15:22,hostfwd=udp::2161-10.0.0.15:161,hostfwd=tcp::2830-10.0.0.15:830,hostfwd=tcp::2080-10.0.0.15:80,hostfwd=tcp::2443-10.0.0.15:443,hostfwd=tcp::16030-10.0.0.15:6030"
-        )
-        vrnetlab.run_command(
-            ["socat", "TCP-LISTEN:6030,fork", "TCP:127.0.0.1:16030"],
-            background=True,
-        )
-
-        return res
-
-
 class VEOS(vrnetlab.VR):
     def __init__(self, hostname, username, password, conn_mode):
         super(VEOS, self).__init__(username, password)
