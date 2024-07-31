@@ -77,7 +77,7 @@ class VEOS_vm(vrnetlab.VM):
                 self.tn.close()
                 # startup time?
                 startup_time = datetime.datetime.now() - self.start_time
-                self.logger.info("Startup complete in: %s" % startup_time)
+                self.logger.info(f"Startup complete in: {startup_time}")
                 # mark as running
                 self.running = True
                 return
@@ -85,7 +85,7 @@ class VEOS_vm(vrnetlab.VM):
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
         if res != b"":
-            self.logger.trace("OUTPUT: %s" % res.decode())
+            self.logger.trace(f"OUTPUT: {res.decode()}")
             # reset spins if we saw some output
             self.spins = 0
 
