@@ -53,6 +53,7 @@ class VEOS_vm(vrnetlab.VM):
         self.conn_mode = conn_mode
         self.num_nics = 20
         self.spins = 0
+        self.running = False
 
     def bootstrap_spin(self):
         """This function should be called periodically to do work."""
