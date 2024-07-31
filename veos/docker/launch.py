@@ -52,6 +52,7 @@ class VEOS_vm(vrnetlab.VM):
         self.hostname = hostname
         self.conn_mode = conn_mode
         self.num_nics = 20
+        self.spins = 0
 
     def bootstrap_spin(self):
         """This function should be called periodically to do work."""
@@ -108,6 +109,7 @@ class VEOS_vm(vrnetlab.VM):
         self.wait_write("interface Management 1")
         self.wait_write("ip address 10.0.0.15/24")
         self.wait_write("exit")
+        self.wait_write("ip route 0.0.0.0/0 10.0.0.2")
         self.wait_write("management api http-commands")
         self.wait_write("protocol unix-socket")
         self.wait_write("no shutdown")
