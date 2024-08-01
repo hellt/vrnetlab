@@ -21,3 +21,5 @@ venv
 .python-version
 
 *.xml
+
+clab-*
