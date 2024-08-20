@@ -32,8 +32,8 @@ handle_args() {
         password=$DEFAULT_PASSWORD
     fi
 
-    SSH_CMD="sshpass -p $password ssh -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2022"
-    SCP_CMD="sshpass -p $password scp -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -P 2022"
+    SSH_CMD="sshpass -p $password ssh -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    SCP_CMD="sshpass -p $password scp -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     HOST="$user@127.0.0.1"
 
     # Parse commands
@@ -72,11 +72,11 @@ backup() {
 
 restore() {
     if [ -f "$BACKUP_FILE" ]; then
-        echo "Restoring from backup..."
+        echo "Copying startup config file to the VM..."
 
-        $SCP_CMD $BACKUP_FILE $HOST:$TMP_FILE && $SSH_CMD $HOST "sudo cp $TMP_FILE $REMOTE_FILE && sudo config reload -y -f || true"
+        $SCP_CMD $BACKUP_FILE $HOST:$TMP_FILE && $SSH_CMD $HOST "sudo cp $TMP_FILE $REMOTE_FILE && sudo config reload -y"
     else
-        echo "$BACKUP_FILE not found. Nothing to restore."
+        echo "$BACKUP_FILE not found. Nothing to push to the VM."
     fi
 }
 
