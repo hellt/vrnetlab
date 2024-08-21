@@ -79,7 +79,6 @@ wait_for_ssh() {
 
     for ((i=1; i<=$max_retries; i++)); do
         echo "Waiting for VM's SSH to become available... (Attempt $i/$max_retries)"
-        # if sshpass -p $PASSWORD ssh -o ConnectTimeout=5 -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $HOST exit 2>/dev/null; then
         if $SSH_CMD -o ConnectTimeout=5 $HOST exit 2>/dev/null; then
             echo "SSH connection established."
             return 0
