@@ -34,7 +34,7 @@ handle_args() {
 
     SSH_CMD="sshpass -p $password ssh -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     SCP_CMD="sshpass -p $password scp -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-    HOST="$user@127.0.0.1"
+    HOST="$user@localhost"
 
     # Parse commands
     case $1 in
@@ -73,11 +73,33 @@ backup() {
     $SCP_CMD $HOST:$TMP_FILE $BACKUP_FILE
 }
 
+wait_for_ssh() {
+    local max_retries=30
+    local retry_interval=2
+
+    for ((i=1; i<=$max_retries; i++)); do
+        echo "Waiting for VM's SSH to become available... (Attempt $i/$max_retries)"
+        # if sshpass -p $PASSWORD ssh -o ConnectTimeout=5 -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $HOST exit 2>/dev/null; then
+        if $SSH_CMD -o ConnectTimeout=5 $HOST exit 2>/dev/null; then
+            echo "SSH connection established."
+            return 0
+        fi
+        sleep $retry_interval
+    done
+
+    echo "SSH connection could not be established after $max_retries attempts."
+    return 1
+}
+
 restore() {
     if [ -f "$BACKUP_FILE" ]; then
         echo "Copying startup config file to the VM..."
 
-        $SCP_CMD $BACKUP_FILE $HOST:$TMP_FILE && $SSH_CMD $HOST "sudo cp $TMP_FILE $REMOTE_FILE && sudo config reload -y"
+        if wait_for_ssh; then
+            $SCP_CMD $BACKUP_FILE $HOST:$TMP_FILE && $SSH_CMD $HOST "sudo cp $TMP_FILE $REMOTE_FILE && sudo config reload -y"
+        else
+            echo "Failed to establish SSH connection. Config copy operation aborted."
+        fi
     else
         echo "$BACKUP_FILE not found. Nothing to push to the VM."
     fi
