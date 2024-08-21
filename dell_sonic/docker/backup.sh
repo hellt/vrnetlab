@@ -66,8 +66,11 @@ usage() {
 }
 
 backup() {
-    echo "Backing up..."
-    $SCP_CMD $HOST:$REMOTE_FILE $BACKUP_FILE
+    echo "Retrieveing the config from the VM..."
+    # copy the original config to the tmp location and set permissions to 777
+    # and then copy out the file from the temp location
+    $SSH_CMD $HOST "sudo cp $REMOTE_FILE $TMP_FILE && sudo chmod 777 $TMP_FILE" && \
+    $SCP_CMD $HOST:$TMP_FILE $BACKUP_FILE
 }
 
 restore() {
