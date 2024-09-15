@@ -11,11 +11,11 @@ import vrnetlab
 STARTUP_CONFIG_FILE = "/config/startup-config.cfg"
 
 
-def handle_SIGCHLD(signal, frame):
+def handle_SIGCHLD(_signal, _frame):
     os.waitpid(-1, os.WNOHANG)
 
 
-def handle_SIGTERM(signal, frame):
+def handle_SIGTERM(_signal, _frame):
     sys.exit(0)
 
 
@@ -58,6 +58,8 @@ class VIOS_vm(vrnetlab.VM):
         self.conn_mode = conn_mode
         # device supports up to 16 interfaces (1 management interface + 15 data interfaces)
         self.num_nics = 15
+        self.running = False
+        self.spins = 0
 
     def bootstrap_spin(self):
         if self.spins > 300:
@@ -93,14 +95,14 @@ class VIOS_vm(vrnetlab.VM):
                 self.tn.close()
                 # startup time
                 startup_time = datetime.datetime.now() - self.start_time
-                self.logger.info("Startup complete in: %s" % startup_time)
+                self.logger.info(f"Startup complete in: {startup_time}")
                 # mark as running
                 self.running = True
 
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
         if res != b"":
-            self.logger.trace("OUTPUT: %s" % res.decode())
+            self.logger.trace(f"OUTPUT: {res.decode()}")
             # reset spins if we saw some output
             self.spins = 0
 
