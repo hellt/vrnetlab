@@ -70,7 +70,7 @@ class VIOS_vm(vrnetlab.VM):
 
         (ridx, match, res) = self.tn.expect(
             [
-                b"Would you like to enter the initial configuration dialog\? \[yes/no\]:",
+                rb"Would you like to enter the initial configuration dialog\? \[yes/no\]:",
                 b"Press RETURN to get started!",
                 b"Router>",
             ],
@@ -191,7 +191,7 @@ if __name__ == '__main__':
         "--trace",
         action="store_true",
         help="Enable trace level logging",
-        default=os.getenv("TRACE", False)
+        default=os.getenv("TRACE", 'false').lower() == 'true'
     )
     parser.add_argument(
         "--username",
