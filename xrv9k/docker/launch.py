@@ -302,7 +302,26 @@ class XRV_vm(vrnetlab.VM):
             self.wait_write(line)
         # Commit and GTFO
         self.wait_write("commit")
-        self.wait_write("exit")
+        commit_attempts = 0
+        while commit_attempts < 30:
+            commit_attempts += 1
+            (ridx, match, res) = self.tn.expect(
+                [
+                    b"Do you wish to proceed with this commit anyway?",
+                    b"Failed to commit one or more configuration items during a pseudo-atomic operation",
+                    b"^[^ ]+#",
+                ],
+                10,
+            )
+            if match:  # got a match!
+                if ridx == 0:  # press return to get started, so we press return!
+                    self.wait_write("yes", wait=None)
+                if ridx == 1:  # Failed to commit one or more configuration items during a pseudo-atomic operation
+                    time.sleep(3)
+                    self.wait_write("commit", wait=None)
+                if ridx == 2:
+                    self.wait_write("exit", wait=None)
+        
 
 
     def _wait_config(self, show_cmd, expect):
