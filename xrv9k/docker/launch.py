@@ -321,6 +321,7 @@ class XRV_vm(vrnetlab.VM):
                     self.wait_write("commit", wait=None)
                 if ridx == 2:
                     self.wait_write("exit", wait=None)
+                    break
         
 
 
