@@ -5,8 +5,8 @@ import os
 import re
 import signal
 import sys
-import vrnetlab
 
+import vrnetlab
 
 STARTUP_CONFIG_FILE = "/config/startup-config.cfg"
 
@@ -51,7 +51,7 @@ class VIOS_vm(vrnetlab.VM):
             disk_image=disk_image,
             smp="1",
             ram=512,
-            driveif="virtio"
+            driveif="virtio",
         )
 
         self.hostname = hostname
@@ -184,34 +184,29 @@ class VIOS(vrnetlab.VR):
         self.vms = [VIOS_vm(hostname, username, password, conn_mode)]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="")
     parser.add_argument(
         "--trace",
         action="store_true",
         help="Enable trace level logging",
-        default=os.getenv("TRACE", 'false').lower() == 'true'
+        default=os.getenv("TRACE", "false").lower() == "true",
     )
     parser.add_argument(
-        "--username",
-        help="Username",
-        default=os.getenv("USERNAME", "vrnetlab")
+        "--username", help="Username", default=os.getenv("USERNAME", "vrnetlab")
     )
     parser.add_argument(
-        "--password",
-        help="Password",
-        default=os.getenv("PASSWORD", "VR-netlab9")
+        "--password", help="Password", default=os.getenv("PASSWORD", "VR-netlab9")
     )
     parser.add_argument(
-        "--hostname",
-        help="Router hostname",
-        default=os.getenv("HOSTNAME", "vios")
+        "--hostname", help="Router hostname", default=os.getenv("HOSTNAME", "vios")
     )
     parser.add_argument(
         "--connection-mode",
         help="Connection mode to use in the datapath",
-        default=os.getenv("CONNECTION_MODE", "tc")
+        default=os.getenv("CONNECTION_MODE", "tc"),
     )
     args = parser.parse_args()
 
@@ -227,5 +222,6 @@ if __name__ == '__main__':
         hostname=args.hostname,
         username=args.username,
         password=args.password,
-        conn_mode=args.connection_mode)
+        conn_mode=args.connection_mode,
+    )
     vr.start()
