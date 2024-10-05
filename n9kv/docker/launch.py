@@ -48,7 +48,8 @@ class N9KV_vm(vrnetlab.VM):
             logging.getLogger().info("Disk image was not found")
             exit(1)
         super(N9KV_vm, self).__init__(
-            username, password, disk_image=disk_image, ram=8192, cpu="host,level=9"
+            username, password, disk_image=disk_image, ram=10240,
+            smp=4, cpu="host,level=9"
         )
         self.hostname = hostname
         self.conn_mode = conn_mode
