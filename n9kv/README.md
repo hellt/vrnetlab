@@ -13,7 +13,7 @@ image will be called vr-n9kv:9.2.4
 
 ## System requirements
 
-* CPU: 2 core
-* RAM: 8GB
-* Disk: <1GB
+* CPU: 4 core
+* RAM: 10 GB
+* Disk: <3GB
 
