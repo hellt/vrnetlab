@@ -11,11 +11,14 @@ docker-image:
 	for IMAGE in $(IMAGES); do \
 		echo "Making $$IMAGE"; \
 		$(MAKE) IMAGE=$$IMAGE docker-build; \
+		$(MAKE) IMAGE=$$IMAGE docker-clean-build; \
 	done
 endif
 
 docker-clean-build:
+	@echo "--> Cleaning docker build context"
 	-rm -f docker/*.qcow2* docker/*.tgz* docker/*.vmdk* docker/*.iso docker/*.xml docker/*.bin
+	-rm -f docker/healthcheck.py docker/vrnetlab.py
 
 docker-pre-build: ;
 
@@ -35,7 +38,7 @@ endif
 	$(MAKE) IMAGE=$$IMAGE docker-build-image-copy
 	(cd docker; docker build --build-arg http_proxy=$(http_proxy) --build-arg HTTP_PROXY=$(HTTP_PROXY) --build-arg https_proxy=$(https_proxy) --build-arg HTTPS_PROXY=$(HTTPS_PROXY) --build-arg IMAGE=$(IMAGE) --build-arg VERSION=$(VERSION) --label "vrnetlab-version=$(VRNETLAB_VERION)" -t $(REGISTRY)$(IMG_VENDOR)_$(IMG_NAME):$(VERSION) .)
 
-docker-build: docker-build-common
+docker-build: docker-build-common docker-clean-build
 
 docker-push:
 	for IMAGE in $(IMAGES); do \
