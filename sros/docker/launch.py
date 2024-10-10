@@ -1544,8 +1544,8 @@ class SROS(vrnetlab.VR):
 
     def extractVersion(self):
         """extractVersion extracts the SR OS version from the qcow2 image name"""
-        # https://regex101.com/r/SPefOu/1
-        pattern = r"(magc-)?\S+-((\d{1,3})\.(\d{1,2})\.\w(\d{1,2}(?:-\d{1,2})?))\.qcow2"
+        # https://regex101.com/r/V9jNHc/1
+        pattern = r"(magc-)?\S+-((\d{1,3})\.(\d{1,2})\.\w(\d{1,2}(?:-\d{1,2})?))\.qcow2$"
         match_found = False
 
         for e in os.listdir("/"):
