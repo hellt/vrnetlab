@@ -1,4 +1,5 @@
 VENDOR=Fortigate
+VR_NAME=fortios
 IMAGE_FORMAT=qcow2
 IMAGE_GLOB=*.qcow2
 -include ../makefile-sanity.include
