@@ -77,6 +77,7 @@ class VM:
         provision_pci_bus=True,
         cpu="host",
         smp="1",
+        mgmt_passthrough=False,
         min_dp_nics=0,
     ):
         self.logger = logging.getLogger()
@@ -107,6 +108,20 @@ class VM:
         # "highest" provisioned nic num -- used for making sure we can allocate nics without needing
         # to have them allocated sequential from eth1
         self.highest_provisioned_nic_num = 0
+
+        # Whether the management interface is pass-through or host-forwarded
+        self.mgmt_nic_passthrough = mgmt_passthrough
+        mgmt_passthrough_override = os.environ.get("CLAB_MGMT_PASSTHROUGH", "")
+        if mgmt_passthrough_override:
+            self.mgmt_nic_passthrough = mgmt_passthrough_override.lower() == "true"
+
+        # Populate management IP and gateway
+        if self.mgmt_nic_passthrough:
+            self.mgmt_address_ipv4 = self.get_mgmt_address_ipv4()
+            self.mgmt_gw_ipv4 = self.get_mgmt_gw_ipv4()
+        else:
+            self.mgmt_address_ipv4 = "10.0.0.15/24"
+            self.mgmt_gw_ipv4 = "10.0.0.2"
 
         self.insuffucient_nics = False
         self.min_nics = 0
@@ -296,7 +311,6 @@ class VM:
     def gen_mgmt(self):
         """Generate qemu args for the mgmt interface(s)"""
         res = []
-        # mgmt interface is special - we use qemu user mode network
         res.append("-device")
         mac = (
             "c0:00:01:00:ca:fe"
@@ -304,22 +318,48 @@ class VM:
             else gen_mac(0)
         )
         res.append(self.nic_type + f",netdev=p00,mac={mac}")
-        res.append("-netdev")
-        res.append(
-            "user,id=p00,net=10.0.0.0/24,"
-            "tftp=/tftpboot,"
-            "hostfwd=tcp:0.0.0.0:22-10.0.0.15:22,"  # ssh
-            "hostfwd=udp:0.0.0.0:161-10.0.0.15:161,"  # snmp
-            "hostfwd=tcp:0.0.0.0:830-10.0.0.15:830,"  # netconf
-            "hostfwd=tcp:0.0.0.0:80-10.0.0.15:80,"  # http
-            "hostfwd=tcp:0.0.0.0:443-10.0.0.15:443,"  # https
-            "hostfwd=tcp:0.0.0.0:9339-10.0.0.15:9339,"  # iana gnmi/gnoi
-            "hostfwd=tcp:0.0.0.0:57400-10.0.0.15:57400,"  # nokia gnmi/gnoi
-            "hostfwd=tcp:0.0.0.0:6030-10.0.0.15:6030,"  # gnmi/gnoi arista
-            "hostfwd=tcp:0.0.0.0:32767-10.0.0.15:32767,"  # gnmi/gnoi juniper
-            "hostfwd=tcp:0.0.0.0:8080-10.0.0.15:8080"  # sonic gnmi/gnoi, other http apis
-        )
+
+        if self.mgmt_nic_passthrough:
+            # mgmt interface is passthrough - we just create a normal mirred tap interface
+            if self.conn_mode == "tc":
+                res.append("-netdev")
+                res.append("tap,id=p00,ifname=tap0,script=/etc/tc-tap-ifup,downscript=no")
+        else:
+            # mgmt interface is special - we use qemu user mode network
+            res.append("-netdev")
+            res.append(
+                "user,id=p00,net=10.0.0.0/24,"
+                "tftp=/tftpboot,"
+                "hostfwd=tcp:0.0.0.0:22-10.0.0.15:22,"  # ssh
+                "hostfwd=udp:0.0.0.0:161-10.0.0.15:161,"  # snmp
+                "hostfwd=tcp:0.0.0.0:830-10.0.0.15:830,"  # netconf
+                "hostfwd=tcp:0.0.0.0:80-10.0.0.15:80,"  # http
+                "hostfwd=tcp:0.0.0.0:443-10.0.0.15:443,"  # https
+                "hostfwd=tcp:0.0.0.0:9339-10.0.0.15:9339,"  # iana gnmi/gnoi
+                "hostfwd=tcp:0.0.0.0:57400-10.0.0.15:57400,"  # nokia gnmi/gnoi
+                "hostfwd=tcp:0.0.0.0:6030-10.0.0.15:6030,"  # gnmi/gnoi arista
+                "hostfwd=tcp:0.0.0.0:32767-10.0.0.15:32767,"  # gnmi/gnoi juniper
+                "hostfwd=tcp:0.0.0.0:8080-10.0.0.15:8080"  # sonic gnmi/gnoi, other http apis
+            )
         return res
+
+    def get_mgmt_address_ipv4(self):
+        """ Returns the IPv4 address of the eth0 interface of the container
+            $ ip -4 --brief address show dev eth0
+            eth0@if958       UP             172.20.20.3/24
+                                            ^
+        """
+        stdout, _ = run_command(["ip -4 --brief address show dev eth0 | awk '{print $3}'"], shell=True)
+        return stdout.decode('utf-8')
+
+    def get_mgmt_gw_ipv4(self):
+        """ Returns the IPv4 default gateway of the container, used for generating the management default route
+            $ ip -4 route show default
+            default via 172.20.20.1 dev eth0
+                        ^
+        """
+        stdout, _ = run_command(["ip -4 route show default | awk '{print $3}'"], shell=True)
+        return stdout.decode('utf-8')
 
     def nic_provision_delay(self) -> None:
         self.logger.debug(
