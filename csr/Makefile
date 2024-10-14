@@ -1,5 +1,5 @@
-VENDOR=Cisco
-NAME=CSR1000v
+VENDOR=cisco
+NAME=csr1000v
 IMAGE_FORMAT=qcow2
 IMAGE_GLOB=*.qcow2
 
@@ -16,6 +16,6 @@ docker-pre-build:
 	-rm cidfile
 
 docker-build: docker-build-common
-	docker run --cidfile cidfile --privileged $(REGISTRY)vr-$(VR_NAME):$(VERSION) --trace --install
-	docker commit --change='ENTRYPOINT ["/launch.py"]' $$(cat cidfile) $(REGISTRY)vr-$(VR_NAME):$(VERSION)
+	docker run --cidfile cidfile --privileged $(REGISTRY)$(VENDOR)_$(NAME):$(VERSION) --trace --install
+	docker commit --change='ENTRYPOINT ["/launch.py"]' $$(cat cidfile) $(REGISTRY)$(VENDOR)_$(NAME):$(VERSION)
 	docker rm -f $$(cat cidfile)
