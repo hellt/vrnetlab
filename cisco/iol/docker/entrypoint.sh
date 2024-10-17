@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Launching IOL"
+echo "Launching IOL with PID" $IOL_PID
 
 # Clear ip addressing on eth0 (it 'belongs' to IOL now)
 ip addr flush dev eth0
@@ -18,4 +18,4 @@ max_eth=$(ls /sys/class/net | grep eth | grep -o -E '[0-9]+' | sort -n | tail -1
 num_slots=$(( (max_eth + 4) / 4 ))
 
 # Start IOL
-exec /iol/iol.bin 1 -e $num_slots -s 0 -c config.txt -n 1024
+exec /iol/iol.bin $IOL_PID -e $num_slots -s 0 -c config.txt -n 1024
