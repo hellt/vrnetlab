@@ -77,6 +77,7 @@ class VM:
         provision_pci_bus=True,
         cpu="host",
         smp="1",
+        mgmt_passthrough=False,
         min_dp_nics=0,
     ):
         self.logger = logging.getLogger()
@@ -107,6 +108,20 @@ class VM:
         # "highest" provisioned nic num -- used for making sure we can allocate nics without needing
         # to have them allocated sequential from eth1
         self.highest_provisioned_nic_num = 0
+
+        # Whether the management interface is pass-through or host-forwarded
+        self.mgmt_nic_passthrough = mgmt_passthrough
+        mgmt_passthrough_override = os.environ.get("CLAB_MGMT_PASSTHROUGH", "")
+        if mgmt_passthrough_override:
+            self.mgmt_nic_passthrough = mgmt_passthrough_override.lower() == "true"
+
+        # Populate management IP and gateway
+        if self.mgmt_nic_passthrough:
+            self.mgmt_address_ipv4 = self.get_mgmt_address_ipv4()
+            self.mgmt_gw_ipv4 = self.get_mgmt_gw_ipv4()
+        else:
+            self.mgmt_address_ipv4 = "10.0.0.15/24"
+            self.mgmt_gw_ipv4 = "10.0.0.2"
 
         self.insuffucient_nics = False
         self.min_nics = 0
@@ -293,10 +308,30 @@ class VM:
             f.write(ifup_script)
         os.chmod("/etc/tc-tap-ifup", 0o777)
 
+    def create_tc_tap_mgmt_ifup(self):
+        """Create tap ifup script that is used in tc datapath mode, specifically for the management interface"""
+        ifup_script = """#!/bin/bash
+
+        ip link set tap0 up
+        ip link set tap0 mtu 65000
+
+        # create tc eth<->tap redirect rules
+        tc qdisc add dev eth0 ingress
+        # add exception rules for ports 5000-5007 (mask everything but last 3 bits with 0xFFF8)
+        tc filter add dev eth0 parent ffff: protocol tcp u32 match ip dport 5000 0xfff8 action pass
+        tc filter add dev eth0 parent ffff: protocol all u32 match u8 0 0 action mirred egress redirect dev tap0
+
+        tc qdisc add dev tap0 ingress
+        tc filter add dev tap0 parent ffff: protocol all u32 match u8 0 0 action mirred egress redirect dev tap0
+        """
+
+        with open("/etc/tc-tap-mgmt-ifup", "w") as f:
+            f.write(ifup_script)
+        os.chmod("/etc/tc-tap-mgmt-ifup", 0o777)
+
     def gen_mgmt(self):
         """Generate qemu args for the mgmt interface(s)"""
         res = []
-        # mgmt interface is special - we use qemu user mode network
         res.append("-device")
         mac = (
             "c0:00:01:00:ca:fe"
@@ -304,22 +339,55 @@ class VM:
             else gen_mac(0)
         )
         res.append(self.nic_type + f",netdev=p00,mac={mac}")
-        res.append("-netdev")
-        res.append(
-            "user,id=p00,net=10.0.0.0/24,"
-            "tftp=/tftpboot,"
-            "hostfwd=tcp:0.0.0.0:22-10.0.0.15:22,"  # ssh
-            "hostfwd=udp:0.0.0.0:161-10.0.0.15:161,"  # snmp
-            "hostfwd=tcp:0.0.0.0:830-10.0.0.15:830,"  # netconf
-            "hostfwd=tcp:0.0.0.0:80-10.0.0.15:80,"  # http
-            "hostfwd=tcp:0.0.0.0:443-10.0.0.15:443,"  # https
-            "hostfwd=tcp:0.0.0.0:9339-10.0.0.15:9339,"  # iana gnmi/gnoi
-            "hostfwd=tcp:0.0.0.0:57400-10.0.0.15:57400,"  # nokia gnmi/gnoi
-            "hostfwd=tcp:0.0.0.0:6030-10.0.0.15:6030,"  # gnmi/gnoi arista
-            "hostfwd=tcp:0.0.0.0:32767-10.0.0.15:32767,"  # gnmi/gnoi juniper
-            "hostfwd=tcp:0.0.0.0:8080-10.0.0.15:8080"  # sonic gnmi/gnoi, other http apis
-        )
+
+        if self.mgmt_nic_passthrough:
+            # mgmt interface is passthrough - we just create a normal mirred tap interface
+            if self.conn_mode == "tc":
+                res.append("-netdev")
+                res.append("tap,id=p00,ifname=tap0,script=/etc/tc-tap-mgmt-ifup,downscript=no")
+        else:
+            # mgmt interface is special - we use qemu user mode network
+            res.append("-netdev")
+            res.append(
+                "user,id=p00,net=10.0.0.0/24,"
+                "tftp=/tftpboot,"
+                "hostfwd=tcp:0.0.0.0:22-10.0.0.15:22,"  # ssh
+                "hostfwd=udp:0.0.0.0:161-10.0.0.15:161,"  # snmp
+                "hostfwd=tcp:0.0.0.0:830-10.0.0.15:830,"  # netconf
+                "hostfwd=tcp:0.0.0.0:80-10.0.0.15:80,"  # http
+                "hostfwd=tcp:0.0.0.0:443-10.0.0.15:443,"  # https
+                "hostfwd=tcp:0.0.0.0:9339-10.0.0.15:9339,"  # iana gnmi/gnoi
+                "hostfwd=tcp:0.0.0.0:57400-10.0.0.15:57400,"  # nokia gnmi/gnoi
+                "hostfwd=tcp:0.0.0.0:6030-10.0.0.15:6030,"  # gnmi/gnoi arista
+                "hostfwd=tcp:0.0.0.0:32767-10.0.0.15:32767,"  # gnmi/gnoi juniper
+                "hostfwd=tcp:0.0.0.0:8080-10.0.0.15:8080"  # sonic gnmi/gnoi, other http apis
+            )
         return res
+
+    def get_mgmt_address_ipv4(self):
+        """ Returns the IPv4 address of the eth0 interface of the container"""
+        stdout, _ = run_command(["ip", "--json", "-4", "address", "show", "dev", "eth0"])
+        command_json = json.loads(stdout.decode('utf-8'))
+        try:
+            intf_addrinfo = command_json[0]['addr_info'][0]
+        except IndexError as e:
+            raise IndexError("No IP set on management interface eth0!") from e
+        mgmt_address = intf_addrinfo['local']
+        mgmt_prefixlen = intf_addrinfo['prefixlen']
+        mgmt_cidr = mgmt_address + '/' + str(mgmt_prefixlen)
+
+        return mgmt_cidr
+
+    def get_mgmt_gw_ipv4(self):
+        """ Returns the IPv4 default gateway of the container, used for generating the management default route"""
+        stdout, _ = run_command(["ip", "--json", "-4", "route", "show", "default"])
+        command_json = json.loads(stdout.decode('utf-8'))
+        try:
+            mgmt_gw = command_json[0]['gateway']
+        except IndexError as e:
+            raise IndexError("No default gateway route on management interface eth0!") from e
+
+        return mgmt_gw
 
     def nic_provision_delay(self) -> None:
         self.logger.debug(
@@ -407,6 +475,7 @@ class VM:
 
         if self.conn_mode == "tc":
             self.create_tc_tap_ifup()
+            self.create_tc_tap_mgmt_ifup()
 
         start_eth = self.start_nic_eth_idx
         end_eth = self.start_nic_eth_idx + self.num_nics
