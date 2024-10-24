@@ -973,14 +973,13 @@ class SROS_vm(vrnetlab.VM):
         ip netns exec fakehost ip addr del  169.254.254.254/16 dev FA
         """
         
-        mgmt_ip_v4_address, mgmt_ip_v4_prefixlen = self.get_mgmt_address_ipv4().split("/")
+        mgmt_ip_v4_address, mgmt_ip_v4_prefixlen = self.mgmt_address_ipv4.split("/")
 
         ifup_script = ifup_script.replace("{MGMT_MAC}", self.mgmt_mac)
         ifup_script = ifup_script.replace("{FAKEHOST_VETH_MAC_ADDR}", FAKEHOST_VETH_MAC_ADDR)
-        ifup_script = ifup_script.replace("{MGMT_CONTAINER_GW}", self.get_mgmt_gw_ipv4())
+        ifup_script = ifup_script.replace("{MGMT_CONTAINER_GW}", self.mgmt_gw_ipv4)
         ifup_script = ifup_script.replace("{MGMT_IP_PREFIXLEN}", mgmt_ip_v4_prefixlen)
         ifup_script = ifup_script.replace("{MGMT_IP_ADDRESS}", mgmt_ip_v4_address)
-
 
         with open("/etc/tc-tap-mgmt-ifup", "w") as f:
             f.write(ifup_script)
