@@ -764,7 +764,7 @@ def get_version_specific_config(major_version: int):
 """
 
 
-# In mgmt pass-through mode, to allow writing config to tftp location we needed to spin up a normal
+# In mgmt host-forwarded mode, to allow writing config to tftp location we needed to spin up a normal
 # tftp server in container host system. To access the host from qemu VM
 # we needed to put SR OS management interface in the container host network namespace
 # this is done by putting SR OS management interface with into a br-mgmt bridge
