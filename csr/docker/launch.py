@@ -253,7 +253,7 @@ if __name__ == "__main__":
     parser.add_argument("--password", default="VR-netlab9", help="Password")
     parser.add_argument("--install", action="store_true", help="Install CSR")
     parser.add_argument("--hostname", default="csr1000v", help="Router Hostname")
-    parser.add_argument("--nics", type=int, default=9, help="Number of NICS")
+    parser.add_argument("--nics", type=int, default=31, help="Number of NICS")
     parser.add_argument(
         "--connection-mode",
         default="vrxcon",
