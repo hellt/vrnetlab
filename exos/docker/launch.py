@@ -10,8 +10,7 @@ import os
 
 import vrnetlab
 
-#TODO: change from .cfg to .xsf after testing stage is finished
-STARTUP_CONFIG_FILE = "/config/startup-config.cfg"
+STARTUP_CONFIG_FILE = "/config/startup-config.xsf"
 
 
 def handle_SIGCHLD(signal, frame):
@@ -116,7 +115,7 @@ class EXOS_vm(vrnetlab.VM):
         self.wait_write(cmd="configure vlan Mgmt ipaddress 10.0.0.15/24", wait="#")
         self.wait_write(cmd="configure iproute add default 10.0.0.2 vr VR-Mgmt", wait="#")
         if self.username == 'admin':
-            self.wait_write(cmd=f"configure account admin password", wait="#")
+            self.wait_write(cmd="configure account admin password", wait="#")
             self.wait_write(cmd="", wait="Current user's password:")
             self.wait_write(cmd=self.password, wait="New password:")
             self.wait_write(cmd=self.password, wait="Reenter password:")
