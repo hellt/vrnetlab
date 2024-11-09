@@ -55,6 +55,7 @@ class VJUNOSEVOLVED_vm(vrnetlab.VM):
             driveif="virtio",
             cpu="IvyBridge,vme=on,ss=on,vmx=on,f16c=on,rdrand=on,hypervisor=on,arat=on,tsc-adjust=on,umip=on,arch-capabilities=on,pdpe1gb=on,skip-l1dfl-vmentry=on,pschange-mc-no=on,bmi1=off,avx2=off,bmi2=off,erms=off,invpcid=off,rdseed=off,adx=off,smap=off,xsaveopt=off,abm=off,svm=off",
             smp="4,sockets=1,cores=4,threads=1",
+            mgmt_passthrough=True
         )
 
         # device hostname
@@ -67,16 +68,18 @@ class VJUNOSEVOLVED_vm(vrnetlab.VM):
         with open("init.conf", "r") as file:
             cfg = file.read()
 
-        # replace HOSTNAME file var with nodes given hostname
+        cfg = cfg.replace("{MGMT_IP_IPV4}", self.mgmt_address_ipv4)
+        cfg = cfg.replace("{MGMT_GW_IPV4}", self.mgmt_gw_ipv4)
+        cfg = cfg.replace("{MGMT_IP_IPV6}", self.mgmt_address_ipv6)
+        cfg = cfg.replace("{MGMT_GW_IPV6}", self.mgmt_gw_ipv6)
+        cfg = cfg.replace("{HOSTNAME}", self.hostname)
         # replace CRYPT_PSWD file var with nodes given password
         # (Evo does not accept plaintext passwords in config)
-        new_cfg = cfg.replace("{HOSTNAME}", hostname).replace(
-            "{CRYPT_PSWD}", password_hash
-        )
+        cfg = cfg.replace("{CRYPT_PSWD}", password_hash)
 
         # write changes to init.conf file
         with open("init.conf", "w") as file:
-            file.write(new_cfg)
+            file.write(cfg)
 
         # pass in user startup config
         self.startup_config()
