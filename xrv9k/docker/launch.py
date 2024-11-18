@@ -232,8 +232,8 @@ class XRV_vm(vrnetlab.VM):
         # make sure we get our prompt back
         self.wait_write("")
 
-        # wait for call-home in config
-        if not self._wait_config("show running-config call-home", "service active"):
+        # wait for linecard to show up
+        if not self._wait_config("show platform | in LC", "IOS XR RUN"):
             return False
 
         self.wait_write("configure")
