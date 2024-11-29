@@ -31,6 +31,9 @@ docker-build-common: docker-clean-build docker-pre-build
 	@echo "Building docker image using $(IMAGE) as $(REGISTRY)$(IMG_VENDOR)_$(IMG_NAME):$(VERSION)"
 ifeq ($(NOT_VM_IMAGE), 1)
 	echo "ok"
+else ifeq ($(VENDOR_SUBDIR), 1)
+	echo "Copying to vendor subdirectory"
+	cp ../../common/* docker/
 else
 	cp ../common/* docker/
 endif

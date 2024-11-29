@@ -202,7 +202,7 @@ class CmgLinux_vm(vrnetlab.VM):
             self.start()
             return
 
-        (ridx, match, res) = self.tn.expect([b"login: "], 1)
+        (ridx, match, res) = self.expect([b"login: "], 1)
         # got am match and login
         if match and ridx == 0:
             self.logger.debug("matched, login: ")
@@ -218,8 +218,8 @@ class CmgLinux_vm(vrnetlab.VM):
 
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
-        if res != b"":
-            self.logger.trace("OUTPUT: %s" % res.decode())
+        if res != "":
+            self.print(res)
             # reset spins if we saw some output
             self.spins = 0
 

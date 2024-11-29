@@ -49,7 +49,7 @@ class VSR_vm(vrnetlab.VM):
             self.start()
             return
 
-        (ridx, match, res) = self.tn.expect([b"Performing automatic"], 1)
+        (ridx, match, res) = self.expect([b"Performing automatic"], 1)
         if match: # got a match!
             if ridx == 0: # login
                 self.logger.debug("VM started")
@@ -103,8 +103,8 @@ quit
 
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
-        if res != b'':
-            self.logger.trace("OUTPUT: %s" % res.decode())
+        if res != "":
+            self.print(res)
             # reset spins if we saw some output
             self.spins = 0
 

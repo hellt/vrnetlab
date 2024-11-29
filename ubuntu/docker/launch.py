@@ -118,7 +118,7 @@ class Ubuntu_vm(vrnetlab.VM):
             self.start()
             return
 
-        (ridx, match, res) = self.tn.expect([b"login: "], 1)
+        (ridx, match, res) = self.expect([b"login: "], 1)
         if match:  # got a match!
             if ridx == 0:  # login
                 self.logger.debug("matched, login: ")
@@ -134,8 +134,8 @@ class Ubuntu_vm(vrnetlab.VM):
 
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
-        if res != b"":
-            self.logger.trace("OUTPUT: %s" % res.decode())
+        if res != "":
+            self.print(res)
             # reset spins if we saw some output
             self.spins = 0
 

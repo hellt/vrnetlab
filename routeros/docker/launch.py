@@ -100,7 +100,7 @@ class ROS_vm(vrnetlab.VM):
             self.start()
             return
 
-        (ridx, match, res) = self.tn.expect([b"MikroTik Login", b"RouterOS Login"], 1)
+        (ridx, match, res) = self.expect([b"MikroTik Login", b"RouterOS Login"], 1)
         if match:  # got a match!
             if ridx in (0, 1):  # login
                 self.logger.debug("VM started")
@@ -121,7 +121,7 @@ class ROS_vm(vrnetlab.VM):
 
                 # ROSv7 requires changing the password right away. ROSv6 does not require changing the password
 
-                (ridx2, match2, _) = self.tn.expect([b"new password>"], 1)
+                (ridx2, match2, _) = self.expect([b"new password>"], 1)
                 if match2 and ridx2 == 0:  # got a match! login
                     self.logger.debug("ROSv7 detected, setting admin password")
                     self.wait_write(f"{self.password}", wait="new password>")
@@ -147,8 +147,8 @@ class ROS_vm(vrnetlab.VM):
 
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
-        if res != b"":
-            self.logger.trace("OUTPUT: %s" % res.decode())
+        if res != "":
+            self.print(res)
             # reset spins if we saw some output
             self.spins = 0
 

@@ -964,14 +964,14 @@ class SROS_vm(vrnetlab.VM):
 
         self.qemu_args.extend(["-drive", f"if=virtio,index={disk_idx},file={path}"])
 
-    # override wait_write clean_buffer parameter default
-    def wait_write(self, cmd, wait="__defaultpattern__", con=None, clean_buffer=True):
-        super().wait_write(cmd, wait, con, clean_buffer)
+    # # override wait_write clean_buffer parameter default
+    # def wait_write(self, cmd, wait="__defaultpattern__", con=None, clean_buffer=True):
+    #     super().wait_write(cmd, wait, con, clean_buffer)
 
     def bootstrap_spin(self):
         """This function should be called periodically to do work."""
 
-        (ridx, match, res) = self.tn.expect([b"Login:", b"^[^ ]+#"], 1)
+        (ridx, match, res) = self.expect([b"Login:", b"^[^ ]+#"], 1)
         if match:  # got a match!
             if ridx == 0:  # matched login prompt, so should login
                 self.logger.debug("matched login prompt")
@@ -989,8 +989,8 @@ class SROS_vm(vrnetlab.VM):
 
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
-        if res != b"":
-            self.logger.trace("OUTPUT: %s" % res.decode())
+        if res != "":
+            self.print(res)
             # reset spins if we saw some output
             self.spins = 0
 
@@ -1678,8 +1678,6 @@ if __name__ == "__main__":
     logger.debug(
         f"acting flags: username '{args.username}', password '{args.password}', connection-mode '{args.connection_mode}', variant '{args.variant}'"
     )
-
-    logger.debug(f"Environment variables: {os.environ}")
 
     vrnetlab.boot_delay()
 

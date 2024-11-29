@@ -1,24 +1,4 @@
-FROM ubuntu:20.04
-
-ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update -qy \
-   && apt-get upgrade -qy \
-   && apt-get install -y \
-   bridge-utils \
-   iproute2 \
-   python3-ipy \
-   socat \
-   qemu-kvm \
-   tcpdump \
-   tftpd-hpa \
-   ssh \
-   inetutils-ping \
-   dnsutils \
-   openvswitch-switch \
-   iptables \
-   nftables \
-   telnet \
-   && rm -rf /var/lib/apt/lists/*
+FROM ghcr.io/srl-labs/vrnetlab-base:0.0.1
 
 ARG IMAGE
 COPY $IMAGE* /

@@ -1,17 +1,4 @@
-FROM debian:stretch
-MAINTAINER Kristian Larsson <kristian@spritelink.net>
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update -qy \
- && apt-get upgrade -qy \
- && apt-get install -y \
-    bridge-utils \
-    iproute2 \
-    python3-ipy \
-    socat \
-    qemu-kvm \
- && rm -rf /var/lib/apt/lists/*
+FROM ghcr.io/srl-labs/vrnetlab-base:0.0.1
 
 ARG IMAGE
 COPY $IMAGE* /

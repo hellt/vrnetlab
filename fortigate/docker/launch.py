@@ -86,7 +86,7 @@ class FortiOS_vm(vrnetlab.VM):
             self.spins = 0
             return
 
-        (ridx, match, res) = self.tn.expect([b"login:", b"FortiGate-VM64-KVM #"], 1)
+        (ridx, match, res) = self.expect([b"login:", b"FortiGate-VM64-KVM #"], 1)
         if match:  # got a match!
             if ridx == 0:  # matched login prompt, so should login
                 self.logger.debug("ridx == 0")
@@ -115,8 +115,8 @@ class FortiOS_vm(vrnetlab.VM):
         else:
             # no match, if we saw some output from the router it's probably
             # booting, so let's give it some more time
-            if res != b"":
-                self.logger.trace(f"OUTPUT FORTIGATE: {res.decode()}")
+            if res != "":
+                self.print(res)
                 # reset spins if we saw some output
                 self.spins = 0
 
@@ -131,8 +131,8 @@ class FortiOS_vm(vrnetlab.VM):
         self.logger.debug("waiting for reset")
         wait_spins = 0
         while wait_spins < 90:
-            _, match, data = self.tn.expect([b"login: "], timeout=10)
-            self.logger.trace(data.decode("UTF-8"))
+            _, match, data = self.expect([b"login: "], timeout=10)
+            self.print(data)
             if match:
                 self.logger.debug("reset finished")
                 return True

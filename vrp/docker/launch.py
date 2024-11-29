@@ -68,7 +68,7 @@ class simulator_VM(vrnetlab.VM):
             4: '\n'                   # Press Enter to Continue
         }
 
-        (ridx, match, res) = self.tn.expect([b'localhost login: ',
+        (ridx, match, res) = self.expect([b'localhost login: ',
                                              b'Password: ',
                                              b'Enter Password:',
                                              b'Confirm Password:',
@@ -97,8 +97,8 @@ class simulator_VM(vrnetlab.VM):
 
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
-        if res != b'':
-            self.logger.trace("OUTPUT: %s" % res.decode())
+        if res != "":
+            self.print(res)
             # reset spins if we saw some output
             self.spins = 0
 
@@ -120,7 +120,7 @@ class simulator_VM(vrnetlab.VM):
         # when simulator booting, config is not ok
         # Error: The system is busy in building configuration. Please wait for a moment...
         while True:
-            (idx, match, res) = self.tn.expect([b'Error:'], 1)
+            (idx, match, res) = self.expect([b'Error:'], 1)
             if match:
                 if idx == 0:
                     self.wait_write(cmd="commit", wait=None)

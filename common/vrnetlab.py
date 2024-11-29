@@ -8,9 +8,12 @@ import os
 import random
 import re
 import subprocess
-import telnetlib
 import time
+import sys
 from pathlib import Path
+
+from scrapli import Driver
+from scrapli.logging import enable_basic_logging
 
 MAX_RETRIES = 60
 
@@ -79,7 +82,39 @@ class VM:
         smp="1",
         min_dp_nics=0,
     ):
-        self.logger = logging.getLogger()
+        
+        # set fancy logging colours
+        logging.addLevelName( logging.INFO, f"\033[1;92m{logging.getLevelName(logging.INFO)}\033[1;0m")
+        logging.addLevelName( logging.WARN, f"\033[38;5;220m{logging.getLevelName(logging.WARN)}\033[1;0m")
+        logging.addLevelName( logging.DEBUG, f"\033[1;91m{logging.getLevelName(logging.DEBUG)}\033[1;0m")
+        logging.addLevelName( logging.ERROR, f"\033[1;91m{logging.getLevelName(logging.ERROR)}\033[1;0m")
+        logging.addLevelName( logging.CRITICAL, f"\033[1;91m{logging.getLevelName(logging.CRITICAL)}\033[1;0m")
+        
+        # set default logger for vrnetlab VM class
+        self.logger = logging.getLogger("vrnetlab")
+        self.logger.setLevel(logging.DEBUG)
+        
+        """
+        Configure Scrapli logger to only be INFO level.
+        Scrapli uses 'scrapli' logger by default, and
+        will write all channel i/o as DEBUG logs.
+        """
+        scrapli_logger = logging.getLogger("scrapli")
+        scrapli_logger.setLevel(logging.INFO)
+        
+        # init scrapli
+        self.scrapli_dev = {
+            "host": "127.0.0.1",
+            "port": 5000 + num,
+            "auth_bypass": True,
+            "auth_strict_key": False,
+            "transport": "telnet",
+            "timeout_socket": 3600,
+            "timeout_transport": 3600,
+            "timeout_ops": 3600,
+        }
+
+        self.tn = Driver(**self.scrapli_dev)
 
         # username / password to configure
         self.username = username
@@ -91,7 +126,6 @@ class VM:
         self.running = False
         self.spins = 0
         self.p = None
-        self.tn = None
 
         self._ram = ram
         self._cpu = cpu
@@ -132,7 +166,7 @@ class VM:
             overlay_disk_image = ".".join(tokens)
 
         if not os.path.exists(overlay_disk_image):
-            self.logger.debug("Creating overlay disk image")
+            self.logger.info("Creating overlay disk image")
             run_command(
                 [
                     "qemu-img",
@@ -176,7 +210,12 @@ class VM:
             self.qemu_args.insert(1, "-enable-kvm")
 
     def start(self):
-        self.logger.info("Starting %s" % self.__class__.__name__)
+        
+        self.logger.info("ENVIRONMENT VARIABLES")
+        for var, value in os.environ.items():
+            self.logger.info(f"{var}: {value}")
+        
+        self.logger.info(f"Launching {self.__class__.__name__} with {self.smp} SMP/VCPU and {self.ram} M of RAM.")
         self.start_time = datetime.datetime.now()
 
         cmd = list(self.qemu_args)
@@ -207,8 +246,8 @@ class VM:
         # generate dummy NICs
         if self.insuffucient_nics:
             cmd.extend(self.gen_dummy_nics())
-
-        self.logger.debug("qemu cmd: {}".format(" ".join(cmd)))
+            
+        self.logger.info("qemu cmd: {}".format(" ".join(cmd)))
 
         self.p = subprocess.Popen(
             " ".join(cmd),
@@ -228,30 +267,12 @@ class VM:
 
         for i in range(1, MAX_RETRIES + 1):
             try:
-                self.qm = telnetlib.Telnet("127.0.0.1", 4000 + self.num)
+                self.tn.open()
                 break
-            except:
-                self.logger.info(
-                    "Unable to connect to qemu monitor (port {}), retrying in a second (attempt {})".format(
-                        4000 + self.num, i
-                    )
-                )
-                time.sleep(1)
-            if i == MAX_RETRIES:
-                raise QemuBroken(
-                    "Unable to connect to qemu monitor on port {}".format(
-                        4000 + self.num
-                    )
-                )
-
-        for i in range(1, MAX_RETRIES + 1):
-            try:
-                self.tn = telnetlib.Telnet("127.0.0.1", 5000 + self.num)
-                break
-            except:
-                self.logger.info(
-                    "Unable to connect to qemu monitor (port {}), retrying in a second (attempt {})".format(
-                        5000 + self.num, i
+            except Exception as e:
+                self.logger.error(
+                    "Unable to connect to qemu monitor (port {}), retrying in a second (attempt {})\nError: {}".format(
+                        5000 + self.num, i, e
                     )
                 )
                 time.sleep(1)
@@ -322,7 +343,7 @@ class VM:
         return res
 
     def nic_provision_delay(self) -> None:
-        self.logger.debug(
+        self.logger.info(
             f"number of provisioned data plane interfaces is {self.num_provisioned_nics}"
         )
 
@@ -333,7 +354,7 @@ class VM:
                 self.insuffucient_nics = True
             return
 
-        self.logger.debug("waiting for provisioned interfaces to appear...")
+        self.logger.info("waiting for provisioned interfaces to appear...")
 
         # start_eth means eth index for VM
         # particularly for multiple slot LC
@@ -356,10 +377,10 @@ class VM:
                 if nics:
                     self.highest_provisioned_nic_num = max(nics)
 
-                self.logger.debug(
+                self.logger.info(
                     f"highest allocated interface id determined to be: {self.highest_provisioned_nic_num}..."
                 )
-                self.logger.debug("interfaces provisioned, continuing...")
+                self.logger.info("interfaces provisioned, continuing...")
                 break
             time.sleep(5)
 
@@ -372,7 +393,7 @@ class VM:
         # calculate required num of nics to generate
         nics = self.min_nics - self.num_provisioned_nics
 
-        self.logger.debug(f"Insuffucient NICs defined. Generating {nics} dummy nics")
+        self.logger.warning(f"Insuffucient NICs defined. Generating {nics} dummy nics")
 
         res = []
 
@@ -496,40 +517,6 @@ class VM:
         self.stop()
         self.start()
 
-    def wait_write(self, cmd, wait="__defaultpattern__", con=None, clean_buffer=False):
-        """Wait for something on the serial port and then send command
-
-        Defaults to using self.tn as connection but this can be overridden
-        by passing a telnetlib.Telnet object in the con argument.
-        """
-        con_name = "custom con"
-        if con is None:
-            con = self.tn
-
-        if con == self.tn:
-            con_name = "serial console"
-        if con == self.qm:
-            con_name = "qemu monitor"
-
-        if wait:
-            # use class default wait pattern if none was explicitly specified
-            if wait == "__defaultpattern__":
-                wait = self.wait_pattern
-            self.logger.trace(f"waiting for '{wait}' on {con_name}")
-            res = con.read_until(wait.encode())
-
-            cleaned_buf = (
-                (con.read_very_eager()) if clean_buffer else None
-            )  # Clear any remaining characters in buffer
-
-            self.logger.trace(f"read from {con_name}: '{res.decode()}'")
-            # log the cleaned buffer if it's not empty
-            if cleaned_buf:
-                self.logger.trace(f"cleaned buffer: '{cleaned_buf.decode()}'")
-
-        self.logger.debug(f"writing to {con_name}: '{cmd}'")
-        con.write("{}\r".format(cmd).encode())
-
     def work(self):
         self.check_qemu()
         if not self.running:
@@ -538,13 +525,113 @@ class VM:
             except EOFError:
                 self.logger.error("Telnet session was disconnected, restarting")
                 self.restart()
+    
+    def read_until(self, match_str, timeout=None):
+        """Read until a given string is encountered or until timeout.
+
+        When no match is found, return whatever is available instead,
+        possibly the empty string.
+        
+        Arguments:
+        - match_str: string to match on (string)
+        - timeout: timeout in seconds, defaults to None (float)
+        """
+        buf = b""
+        
+        if timeout:
+            t_end = time.time() + timeout
+        
+        while True:
+            current_buf = self.tn.channel.read()
+            buf += current_buf
+            
+            match = re.search(match_str, current_buf.decode())
+
+            # for reliability purposes, doublecheck the entire buffer 
+            # maybe the current buffer only has partial output
+            if match is None:
+                match = re.search(match_str, buf.decode())
+            
+            self.print(current_buf)
+            
+            if match:
+                break
+            if timeout and time.time() > t_end:
+                break
+        
+        return buf
+
+    def wait_write(self, cmd, wait="__defaultpattern__", con=None, clean_buffer=None, timeout=None):
+        """
+        Wait for something on the serial port and then send command
+        
+        Arguments are:
+        - cmd: command to send (string)
+        - wait: prompt to wait for before sending command, defaults to # (string)
+        - timeout: if prompt is not found after x amounts of seconds, send command anyways. Defaults to None (float)
+        """
+        if con is not None:
+            raise ValueError("wait_write: con argument is no longer supported. Please raise GitHub issue on hellt/vrnetlab, or report in containerlab discord.")
+        if clean_buffer is not None:
+            raise ValueError("wait_write: clean_buffer argument is no longer supported. Please raise GitHub issue on hellt/vrnetlab, or report in containerlab discord.")
+
+        if wait:
+            # use class default wait pattern if none was explicitly specified
+            if wait == "__defaultpattern__":
+                wait = self.wait_pattern
+    
+            self.print(b"\n")
+            self.logger.info(f"waiting for '{wait}' on console.")
+            
+            self.read_until(wait, timeout)
+
+        time.sleep(0.1) # don't write to the console too fast
+        
+        self.print(b"\n")
+        self.logger.info(f"Writing to console: '{cmd}'")
+        self.tn.channel.write(f"{cmd}\r")
+    
+    def expect(self, regex_list, timeout=None):
+        """Wait for something on the serial port.
+        
+        Takes list of strings and timeout as arguments.
+
+        Returns tuple of:
+        - index of matched object from regex.
+        - match object.
+        - buffer of cosole read until match, or function exit.
+        """
+        buf = self.tn.channel.read()
+                
+        if timeout:
+            t_end = time.time() + timeout
+        
+        for i, obj in enumerate(regex_list):
+            match = re.search(obj.decode(), buf.decode())
+            if match:
+                return i, match, buf
+            if timeout and time.time() > t_end:
+                break
+        
+        return -1, None, buf
+
+    def print(self, bytes):
+        """
+        Quick and dirty way to write to stdout (docker logs) instead of 
+        using the python logger which poorly formats the output.
+        
+        Useful for printing console to docker logs
+        """
+        sys.stdout.buffer.write(bytes)
+        sys.stdout.buffer.flush()
+
 
     def check_qemu(self):
         """Check health of qemu. This is mostly just seeing if there's error
         output on STDOUT from qemu which means we restart it.
         """
         if self.p is None:
-            self.logger.debug("VM not started; starting!")
+            self.logger.warning("VM not started; starting!")
             self.start()
 
         # check for output
@@ -556,7 +643,7 @@ class VM:
         self.logger.info("STDERR: %s" % errs)
 
         if errs != "":
-            self.logger.debug("KVM error, restarting")
+            self.logger.error("KVM error, restarting")
             self.stop()
             self.start()
 
@@ -640,8 +727,7 @@ class VR:
 
     def start(self):
         """Start the virtual router"""
-        self.logger.debug("Starting vrnetlab %s" % self.__class__.__name__)
-        self.logger.debug("VMs: %s" % self.vms)
+        self.logger.info("VMs: %s" % self.vms)
 
         started = False
         while True:

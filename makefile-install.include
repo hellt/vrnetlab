@@ -31,18 +31,18 @@
 docker-pre-build:
 	-cat cidfile | xargs --no-run-if-empty docker rm -f
 	-rm cidfile
-	-docker tag $(REGISTRY)vr-$(VR_NAME):$(VERSION) $(REGISTRY)vr-$(VR_NAME):$(VERSION)-previous-build
+	-docker tag $(REGISTRY)$(IMG_VENDOR)_$(IMG_NAME):$(VERSION) $(REGISTRY)$(IMG_VENDOR)_$(IMG_NAME):$(VERSION)-previous-build
 
 docker-build: docker-build-common
-	-docker inspect --format '{{.RootFS.Layers}}' $(REGISTRY)vr-$(VR_NAME):$(VERSION)-previous-build | tr -d '][' | awk '{ $$(NF)=""; print }' > built-image-sha-previous
-	docker inspect --format '{{.RootFS.Layers}}' $(REGISTRY)vr-$(VR_NAME):$(VERSION) | tr -d '][' > built-image-sha-current
+	-docker inspect --format '{{.RootFS.Layers}}' $(REGISTRY)$(IMG_VENDOR)_$(IMG_NAME):$(VERSION)-previous-build | tr -d '][' | awk '{ $$(NF)=""; print }' > built-image-sha-previous
+	docker inspect --format '{{.RootFS.Layers}}' $(REGISTRY)$(IMG_VENDOR)_$(IMG_NAME):$(VERSION) | tr -d '][' > built-image-sha-current
 	if [ "$$(cat built-image-sha-previous | sed -e 's/[[:space:]]*$$//')" = "$$(cat built-image-sha-current)" ]; then echo "Previous image is the same as current, retagging!"; \
-	docker tag $(REGISTRY)vr-$(VR_NAME):$(VERSION)-previous-build $(REGISTRY)vr-$(VR_NAME):$(VERSION) || true; \
+	docker tag $(REGISTRY)$(IMG_VENDOR)_$(IMG_NAME):$(VERSION)-previous-build $(REGISTRY)$(IMG_VENDOR)_$(IMG_NAME):$(VERSION) || true; \
 	else \
 	echo "Current build differ from previous, running install!"; \
-	docker run --cidfile cidfile --privileged $(REGISTRY)vr-$(VR_NAME):$(VERSION) --trace --install; \
-	docker commit --change='ENTRYPOINT ["/launch.py"]' $$(cat cidfile) $(REGISTRY)vr-$(VR_NAME):$(VERSION); \
+	docker run --cidfile cidfile --privileged $(REGISTRY)$(IMG_VENDOR)_$(IMG_NAME):$(VERSION) --trace --install; \
+	docker commit --change='ENTRYPOINT ["/launch.py"]' $$(cat cidfile) $(REGISTRY)$(IMG_VENDOR)_$(IMG_NAME):$(VERSION); \
 	docker rm -f $$(cat cidfile); \
 	fi
-	docker rmi -f $(REGISTRY)vr-$(VR_NAME):$(VERSION)-previous-build || true
+	docker rmi -f $(REGISTRY)$(IMG_VENDOR)_$(IMG_NAME):$(VERSION)-previous-build || true
 	rm built-image-sha*
