@@ -1167,7 +1167,7 @@ class SROS_vm(vrnetlab.VM):
         """generate bof configuration commands based on env vars and SR OS version"""
         cmds = []
         if "DOCKER_NET_V4_ADDR" in os.environ and os.getenv("DOCKER_NET_V4_ADDR") != "":
-            if self.mgmt_nic_passthrough:
+            if self.mgmt_passthrough:
                 # in pass-trough mode we configure static routes for the IPv4 private space
                 if SROS_VERSION.major >= 23 and not SROS_VERSION.magc:
                     cmds.append(
@@ -1205,7 +1205,7 @@ class SROS_vm(vrnetlab.VM):
                         f'/bof static-route {os.getenv("DOCKER_NET_V4_ADDR")} next-hop {BRIDGE_V4_ADDR}'
                     )
         if "DOCKER_NET_V6_ADDR" in os.environ and os.getenv("DOCKER_NET_V6_ADDR") != "":
-            if not self.mgmt_nic_passthrough:
+            if not self.mgmt_passthrough:
                 if SROS_VERSION.major >= 23 and not SROS_VERSION.magc:
                     cmds.append(
                         f'/bof router static-routes route {os.getenv("DOCKER_NET_V6_ADDR")} next-hop {BRIDGE_V6_ADDR}'
@@ -1297,7 +1297,7 @@ class SROS_integrated(SROS_vm):
         self.role = "integrated"
         self.num_nics = num_nics
 
-        if self.mgmt_nic_passthrough:
+        if self.mgmt_passthrough:
             self.smbios = [
                 f"type=1,product=TIMOS:address={self.mgmt_address_ipv4}@active "
                 f"license-file=tftp://{self.mgmt_gw_ipv4}/"
@@ -1331,7 +1331,7 @@ class SROS_integrated(SROS_vm):
         mac = vrnetlab.gen_mac(0)
         self.mgmt_mac = mac
 
-        if self.mgmt_nic_passthrough:
+        if self.mgmt_passthrough:
             res.append("-device")
             res.append("virtio-net-pci,netdev=p00,mac=%s" % self.mgmt_mac)
             res.append("-netdev")
@@ -1389,7 +1389,7 @@ class SROS_cp(SROS_vm):
         self.num_nics = 0
         self.hostname = hostname
         self.variant = variant
-        if self.mgmt_nic_passthrough:
+        if self.mgmt_passthrough:
             self.smbios = [
                 f"type=1,product=TIMOS:address={self.mgmt_address_ipv4}@active "
                 f"license-file=tftp://{self.mgmt_gw_ipv4}/"
@@ -1436,7 +1436,7 @@ class SROS_cp(SROS_vm):
         mac = vrnetlab.gen_mac(0)
         self.mgmt_mac = mac
 
-        if self.mgmt_nic_passthrough:
+        if self.mgmt_passthrough:
             res.append("-device")
             res.append("virtio-net-pci,netdev=p00,mac=%s" % self.mgmt_mac)
             res.append("-netdev")
@@ -1530,8 +1530,17 @@ class SROS_lc(SROS_vm):
 
 # SROS is main class for VSR-SIM
 class SROS(vrnetlab.VR):
-    def __init__(self, hostname, username, password, mode, variant_name, conn_mode):
-        super().__init__(username, password)
+    def __init__(
+        self,
+        hostname,
+        username,
+        password,
+        mode,
+        variant_name,
+        conn_mode,
+        mgmt_passthrough,
+    ):
+        super().__init__(username, password, mgmt_passthrough)
 
         if variant_name.lower() in SROS_VARIANTS:
             variant = SROS_VARIANTS[variant_name.lower()]
@@ -1568,7 +1577,7 @@ class SROS(vrnetlab.VR):
         self.logger.info("Configuration mode: " + str(mode))
 
         # if we are in host-forwarded then we need to create Mgmt bridge
-        if not self.mgmt_nic_passthrough:
+        if not self.mgmt_passthrough:
             self.setupMgmtBridge()
 
         if variant["deployment_model"] == "distributed":
@@ -1771,10 +1780,13 @@ if __name__ == "__main__":
     # host-forwarded is the original vrnetlab mode where SR OS gets a static IP for its bof address,
     # which does not match the eth0 interface of a container.
     # In pass-through mode the SR OS container uses the same IP as the container's eth0 interface and transparently forwards traffic between the two interfaces.
-    mgmt_nic_passthrough = os.getenv("CLAB_MGMT_PASSTHROUGH", "").lower() == "true"
+    mgmt_passthrough = False
+    if os.getenv("CLAB_MGMT_PASSTHROUGH", "").lower() == "true":
+        mgmt_passthrough = True
+        logger.debug("Management passthrough mode is ON")
 
     # In host-forwarded mode the container runs a tftp server in the root namespace of the container.
-    if not mgmt_nic_passthrough:
+    if not mgmt_passthrough:
         vrnetlab.run_command(
             [
                 "in.tftpd",
@@ -1895,5 +1907,6 @@ if __name__ == "__main__":
         mode=args.mode,
         variant_name=args.variant,
         conn_mode=args.connection_mode,
+        mgmt_passthrough=mgmt_passthrough,
     )
     ia.start()

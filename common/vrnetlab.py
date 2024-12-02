@@ -98,15 +98,6 @@ class VM:
         self._cpu = cpu
         self._smp = smp
 
-        # set management interface mode to pass-through or host-forwarded
-        # host-forwarded is the original vrnetlab mode where a VM gets a static IP for its management address,
-        # which **does not** match the eth0 interface of a container.
-        # In pass-through mode the VM container uses the same IP as the container's eth0 interface and transparently forwards traffic between the two interfaces.
-        # See https://github.com/hellt/vrnetlab/issues/286
-        self.mgmt_nic_passthrough = (
-            os.getenv("CLAB_MGMT_PASSTHROUGH", "").lower() == "true"
-        )
-
         # various settings
         self.uuid = None
         self.fake_start_date = None
@@ -118,14 +109,18 @@ class VM:
         # to have them allocated sequential from eth1
         self.highest_provisioned_nic_num = 0
 
-        # Whether the management interface is pass-through or host-forwarded
-        self.mgmt_nic_passthrough = mgmt_passthrough
+        # Whether the management interface is pass-through or host-forwarded.
+        # Host-forwarded is the original vrnetlab mode where a VM gets a static IP for its management address,
+        # which **does not** match the eth0 interface of a container.
+        # In pass-through mode the VM container uses the same IP as the container's eth0 interface and transparently forwards traffic between the two interfaces.
+        # See https://github.com/hellt/vrnetlab/issues/286
+        self.mgmt_passthrough = mgmt_passthrough
         mgmt_passthrough_override = os.environ.get("CLAB_MGMT_PASSTHROUGH", "")
         if mgmt_passthrough_override:
-            self.mgmt_nic_passthrough = mgmt_passthrough_override.lower() == "true"
+            self.mgmt_passthrough = mgmt_passthrough_override.lower() == "true"
 
         # Populate management IP and gateway
-        if self.mgmt_nic_passthrough:
+        if self.mgmt_passthrough:
             self.mgmt_address_ipv4, self.mgmt_address_ipv6 = self.get_mgmt_address()
             self.mgmt_gw_ipv4, self.mgmt_gw_ipv6 = self.get_mgmt_gw()
         else:
@@ -362,11 +357,13 @@ class VM:
         self.mgmt_mac = mac
         res.append(self.nic_type + f",netdev=p00,mac={self.mgmt_mac}")
 
-        if self.mgmt_nic_passthrough:
+        if self.mgmt_passthrough:
             # mgmt interface is passthrough - we just create a normal mirred tap interface
             if self.conn_mode == "tc":
                 res.append("-netdev")
-                res.append("tap,id=p00,ifname=tap0,script=/etc/tc-tap-mgmt-ifup,downscript=no")
+                res.append(
+                    "tap,id=p00,ifname=tap0,script=/etc/tc-tap-mgmt-ifup,downscript=no"
+                )
                 self.create_tc_tap_mgmt_ifup()
         else:
             # mgmt interface is special - we use qemu user mode network
@@ -388,22 +385,22 @@ class VM:
         return res
 
     def get_mgmt_address(self):
-        """ Returns the IPv4 and IPv6 address of the eth0 interface of the container"""
+        """Returns the IPv4 and IPv6 address of the eth0 interface of the container"""
         stdout, _ = run_command(["ip", "--json", "address", "show", "dev", "eth0"])
-        command_json = json.loads(stdout.decode('utf-8'))
-        intf_addrinfos = command_json[0]['addr_info']
+        command_json = json.loads(stdout.decode("utf-8"))
+        intf_addrinfos = command_json[0]["addr_info"]
 
         mgmt_cidr_v4 = None
         mgmt_cidr_v6 = None
         for addrinfo in intf_addrinfos:
-            if addrinfo['family'] == 'inet' and addrinfo['scope'] == 'global':
-                mgmt_address_v4 = addrinfo['local']
-                mgmt_prefixlen_v4 = addrinfo['prefixlen']
-                mgmt_cidr_v4 = mgmt_address_v4 + '/' + str(mgmt_prefixlen_v4)
-            if addrinfo['family'] == 'inet6' and addrinfo['scope'] == 'global':
-                mgmt_address_v6 = addrinfo['local']
-                mgmt_prefixlen_v6 = addrinfo['prefixlen']
-                mgmt_cidr_v6 = mgmt_address_v6 + '/' + str(mgmt_prefixlen_v6)
+            if addrinfo["family"] == "inet" and addrinfo["scope"] == "global":
+                mgmt_address_v4 = addrinfo["local"]
+                mgmt_prefixlen_v4 = addrinfo["prefixlen"]
+                mgmt_cidr_v4 = mgmt_address_v4 + "/" + str(mgmt_prefixlen_v4)
+            if addrinfo["family"] == "inet6" and addrinfo["scope"] == "global":
+                mgmt_address_v6 = addrinfo["local"]
+                mgmt_prefixlen_v6 = addrinfo["prefixlen"]
+                mgmt_cidr_v6 = mgmt_address_v6 + "/" + str(mgmt_prefixlen_v6)
 
         if not mgmt_cidr_v4:
             raise ValueError("No IPv4 address set on management interface eth0!")
@@ -411,18 +408,20 @@ class VM:
         return mgmt_cidr_v4, mgmt_cidr_v6
 
     def get_mgmt_gw(self):
-        """ Returns the IPv4 and IPv6 default gateways of the container, used for generating the management default route"""
+        """Returns the IPv4 and IPv6 default gateways of the container, used for generating the management default route"""
         stdout_v4, _ = run_command(["ip", "--json", "-4", "route", "show", "default"])
-        command_json_v4 = json.loads(stdout_v4.decode('utf-8'))
+        command_json_v4 = json.loads(stdout_v4.decode("utf-8"))
         try:
-            mgmt_gw_v4 = command_json_v4[0]['gateway']
+            mgmt_gw_v4 = command_json_v4[0]["gateway"]
         except IndexError as e:
-            raise IndexError("No default gateway route on management interface eth0!") from e
+            raise IndexError(
+                "No default gateway route on management interface eth0!"
+            ) from e
 
         stdout_v6, _ = run_command(["ip", "--json", "-6", "route", "show", "default"])
-        command_json_v6 = json.loads(stdout_v6.decode('utf-8'))
+        command_json_v6 = json.loads(stdout_v6.decode("utf-8"))
         try:
-            mgmt_gw_v6 = command_json_v6[0]['gateway']
+            mgmt_gw_v6 = command_json_v6[0]["gateway"]
         except IndexError:
             mgmt_gw_v6 = None
 
@@ -732,17 +731,18 @@ class VM:
 
 
 class VR:
-    def __init__(self, username, password):
+    def __init__(self, username, password, mgmt_passthrough: bool = False):
         self.logger = logging.getLogger()
 
-        # set management interface mode to pass-through or host-forwarded
-        # host-forwarded is the original vrnetlab mode where a VM gets a static IP for its management address,
+        # Whether the management interface is pass-through or host-forwarded.
+        # Host-forwarded is the original vrnetlab mode where a VM gets a static IP for its management address,
         # which **does not** match the eth0 interface of a container.
         # In pass-through mode the VM container uses the same IP as the container's eth0 interface and transparently forwards traffic between the two interfaces.
         # See https://github.com/hellt/vrnetlab/issues/286
-        self.mgmt_nic_passthrough = (
-            os.getenv("CLAB_MGMT_PASSTHROUGH", "").lower() == "true"
-        )
+        self.mgmt_passthrough = mgmt_passthrough
+        mgmt_passthrough_override = os.environ.get("CLAB_MGMT_PASSTHROUGH", "")
+        if mgmt_passthrough_override:
+            self.mgmt_passthrough = mgmt_passthrough_override.lower() == "true"
 
         try:
             os.mkdir("/tftpboot")
