@@ -781,6 +781,7 @@ V6_PREFIX_LENGTH = "127"
 # we redirect traffic to this ns by using tc flower filters
 FAKEHOST_VETH_MAC_ADDR = "3a:3a:3a:3a:3a:3a"
 
+
 def parse_variant_line(cfg, obj, skip_nics=False):
     if not obj:
         obj = {}
@@ -920,10 +921,10 @@ class SROS_vm(vrnetlab.VM):
 
         # override default wait pattern with hash followed by the space
         self.wait_pattern = "# "
-    
+
     def create_tc_tap_mgmt_ifup(self):
         # override the parent's function with sros requirements
-        # this is used when using pass-through mode for mgmt connectivity 
+        # this is used when using pass-through mode for mgmt connectivity
         """Create tap ifup script that is used in tc datapath mode, specifically for the management interface"""
         ifup_script = """#!/bin/bash
 
@@ -972,11 +973,13 @@ class SROS_vm(vrnetlab.VM):
         ip netns exec fakehost ip addr add {MGMT_CONTAINER_GW}/{MGMT_IP_PREFIXLEN} dev FA
         ip netns exec fakehost ip addr del  169.254.254.254/16 dev FA
         """
-        
+
         mgmt_ip_v4_address, mgmt_ip_v4_prefixlen = self.mgmt_address_ipv4.split("/")
 
         ifup_script = ifup_script.replace("{MGMT_MAC}", self.mgmt_mac)
-        ifup_script = ifup_script.replace("{FAKEHOST_VETH_MAC_ADDR}", FAKEHOST_VETH_MAC_ADDR)
+        ifup_script = ifup_script.replace(
+            "{FAKEHOST_VETH_MAC_ADDR}", FAKEHOST_VETH_MAC_ADDR
+        )
         ifup_script = ifup_script.replace("{MGMT_CONTAINER_GW}", self.mgmt_gw_ipv4)
         ifup_script = ifup_script.replace("{MGMT_IP_PREFIXLEN}", mgmt_ip_v4_prefixlen)
         ifup_script = ifup_script.replace("{MGMT_IP_ADDRESS}", mgmt_ip_v4_address)
@@ -1164,33 +1167,33 @@ class SROS_vm(vrnetlab.VM):
         """generate bof configuration commands based on env vars and SR OS version"""
         cmds = []
         if "DOCKER_NET_V4_ADDR" in os.environ and os.getenv("DOCKER_NET_V4_ADDR") != "":
-            if os.getenv("CLAB_MGMT_PASSTHROUGH","").lower() == "true":
+            if self.mgmt_nic_passthrough:
                 # in pass-trough mode we configure static routes for the IPv4 private space
                 if SROS_VERSION.major >= 23 and not SROS_VERSION.magc:
                     cmds.append(
-                        f'/bof router static-routes route 100.64.0.0/10 next-hop {self.mgmt_gw_ipv4}'
+                        f"/bof router static-routes route 100.64.0.0/10 next-hop {self.mgmt_gw_ipv4}"
                     )
                     cmds.append(
-                        f'/bof router static-routes route 10.0.0.0/8 next-hop {self.mgmt_gw_ipv4}'
+                        f"/bof router static-routes route 10.0.0.0/8 next-hop {self.mgmt_gw_ipv4}"
                     )
                     cmds.append(
-                        f'/bof router static-routes route 172.16.0.0/12 next-hop {self.mgmt_gw_ipv4}'
+                        f"/bof router static-routes route 172.16.0.0/12 next-hop {self.mgmt_gw_ipv4}"
                     )
                     cmds.append(
-                        f'/bof router static-routes route 192.168.0.0/16 next-hop {self.mgmt_gw_ipv4}'
+                        f"/bof router static-routes route 192.168.0.0/16 next-hop {self.mgmt_gw_ipv4}"
                     )
                 else:
                     cmds.append(
-                        f'/bof static-route 100.64.0.0/10 next-hop {self.mgmt_gw_ipv4}'
+                        f"/bof static-route 100.64.0.0/10 next-hop {self.mgmt_gw_ipv4}"
                     )
                     cmds.append(
-                        f'/bof static-route 10.0.0.0/8 next-hop {self.mgmt_gw_ipv4}'
+                        f"/bof static-route 10.0.0.0/8 next-hop {self.mgmt_gw_ipv4}"
                     )
                     cmds.append(
-                        f'/bof static-route 172.16.0.0/12 next-hop {self.mgmt_gw_ipv4}'
+                        f"/bof static-route 172.16.0.0/12 next-hop {self.mgmt_gw_ipv4}"
                     )
                     cmds.append(
-                        f'/bof static-route 192.168.0.0/16 next-hop {self.mgmt_gw_ipv4}'
+                        f"/bof static-route 192.168.0.0/16 next-hop {self.mgmt_gw_ipv4}"
                     )
             else:
                 if SROS_VERSION.major >= 23 and not SROS_VERSION.magc:
@@ -1202,7 +1205,7 @@ class SROS_vm(vrnetlab.VM):
                         f'/bof static-route {os.getenv("DOCKER_NET_V4_ADDR")} next-hop {BRIDGE_V4_ADDR}'
                     )
         if "DOCKER_NET_V6_ADDR" in os.environ and os.getenv("DOCKER_NET_V6_ADDR") != "":
-            if not os.getenv("CLAB_MGMT_PASSTHROUGH","").lower() == "true":
+            if not self.mgmt_nic_passthrough:
                 if SROS_VERSION.major >= 23 and not SROS_VERSION.magc:
                     cmds.append(
                         f'/bof router static-routes route {os.getenv("DOCKER_NET_V6_ADDR")} next-hop {BRIDGE_V6_ADDR}'
@@ -1293,7 +1296,7 @@ class SROS_integrated(SROS_vm):
         self.mode = mode
         self.role = "integrated"
         self.num_nics = num_nics
-        
+
         if self.mgmt_nic_passthrough:
             self.smbios = [
                 f"type=1,product=TIMOS:address={self.mgmt_address_ipv4}@active "
@@ -1324,7 +1327,7 @@ class SROS_integrated(SROS_vm):
         """
 
         res = []
-        
+
         mac = vrnetlab.gen_mac(0)
         self.mgmt_mac = mac
 
@@ -1332,9 +1335,11 @@ class SROS_integrated(SROS_vm):
             res.append("-device")
             res.append("virtio-net-pci,netdev=p00,mac=%s" % self.mgmt_mac)
             res.append("-netdev")
-            res.append("tap,ifname=tap0,id=p00,script=/etc/tc-tap-mgmt-ifup,downscript=no")
+            res.append(
+                "tap,ifname=tap0,id=p00,script=/etc/tc-tap-mgmt-ifup,downscript=no"
+            )
             self.create_tc_tap_mgmt_ifup()
-        
+
         else:
             res.append("-device")
 
@@ -1343,7 +1348,7 @@ class SROS_integrated(SROS_vm):
             )
             res.append("-netdev")
             res.append("bridge,br=br-mgmt,id=br-mgmt" % {"i": 0})
-        
+
         if any(
             chassis in self.variant["timos_line"]
             for chassis in [
@@ -1360,6 +1365,7 @@ class SROS_integrated(SROS_vm):
             res.append("-netdev tap,ifname=sfm-dummy,id=dummy,script=no,downscript=no")
 
         return res
+
 
 class SROS_cp(SROS_vm):
     """Control plane for distributed VSR-SIM"""
@@ -1434,10 +1440,11 @@ class SROS_cp(SROS_vm):
             res.append("-device")
             res.append("virtio-net-pci,netdev=p00,mac=%s" % self.mgmt_mac)
             res.append("-netdev")
-            res.append("tap,ifname=tap0,id=p00,script=/etc/tc-tap-mgmt-ifup,downscript=no")
+            res.append(
+                "tap,ifname=tap0,id=p00,script=/etc/tc-tap-mgmt-ifup,downscript=no"
+            )
             self.create_tc_tap_mgmt_ifup()
         else:
-
             res.append("-device")
 
             res.append(
@@ -1560,17 +1567,10 @@ class SROS(vrnetlab.VR):
         self.logger.info(f"Number of NICs: {variant['max_nics']}")
         self.logger.info("Configuration mode: " + str(mode))
 
-        mgmt_nic_passthrough = False
-        # Check if management interface is pass-through or host-forwarded
-        mgmt_passthrough_env = os.getenv("CLAB_MGMT_PASSTHROUGH","").lower() == "true"
-        
-        if mgmt_passthrough_env:
-            mgmt_nic_passthrough = mgmt_passthrough_env
-        
         # if we are in host-forwarded then we need to create Mgmt bridge
-        if not mgmt_nic_passthrough:
+        if not self.mgmt_nic_passthrough:
             self.setupMgmtBridge()
-            
+
         if variant["deployment_model"] == "distributed":
             # CP VM instantiation
             self.vms = [
@@ -1688,7 +1688,9 @@ class SROS(vrnetlab.VR):
     def extractVersion(self):
         """extractVersion extracts the SR OS version from the qcow2 image name"""
         # https://regex101.com/r/V9jNHc/1
-        pattern = r"(magc-)?\S+-((\d{1,3})\.(\d{1,2})\.\w(\d{1,2}(?:-\d{1,2})?))\.qcow2$"
+        pattern = (
+            r"(magc-)?\S+-((\d{1,3})\.(\d{1,2})\.\w(\d{1,2}(?:-\d{1,2})?))\.qcow2$"
+        )
         match_found = False
 
         for e in os.listdir("/"):
@@ -1765,16 +1767,14 @@ if __name__ == "__main__":
     if args.trace:
         logger.setLevel(1)
 
-    mgmt_nic_passthrough = False
-    # Check if management interface is pass-through or host-forwarded
-    mgmt_passthrough_env = os.getenv("CLAB_MGMT_PASSTHROUGH","").lower() == "true"
-    
-    if mgmt_passthrough_env:
-        mgmt_nic_passthrough = mgmt_passthrough_env
+    # set management interface mode to pass-through or host-forwarded
+    # host-forwarded is the original vrnetlab mode where SR OS gets a static IP for its bof address,
+    # which does not match the eth0 interface of a container.
+    # In pass-through mode the SR OS container uses the same IP as the container's eth0 interface and transparently forwards traffic between the two interfaces.
+    mgmt_nic_passthrough = os.getenv("CLAB_MGMT_PASSTHROUGH", "").lower() == "true"
 
     # In host-forwarded mode the container runs a tftp server in the root namespace of the container.
     if not mgmt_nic_passthrough:
-
         vrnetlab.run_command(
             [
                 "in.tftpd",
@@ -1827,41 +1827,29 @@ if __name__ == "__main__":
         vrnetlab.run_command(
             "ip6tables-nft -t nat -A POSTROUTING -o eth0 -j MASQUERADE".split()
         )
-    
-    # In management pass-through mode the container runs a tftp server in a dedicated namepace. 
+
+    # In management pass-through mode the container runs a tftp server in a dedicated namepace.
     # This namespace will use the IPv4 default gateway of the container as interface
     # tc flower rules will intercept tftp traffic and redirect it to this namespace
-    
+
     else:
         # create namespace
-        vrnetlab.run_command(
-            "ip netns add fakehost".split()
-        )
+        vrnetlab.run_command("ip netns add fakehost".split())
         # create vethts: FA in fakehost ns, RA in "root" ns
-        vrnetlab.run_command(
-            "ip link add FA type veth peer name RA".split()
-        )
+        vrnetlab.run_command("ip link add FA type veth peer name RA".split())
         # assign FA veth to ns
-        vrnetlab.run_command(
-            "ip link set FA netns fakehost".split()
-        )
+        vrnetlab.run_command("ip link set FA netns fakehost".split())
         # enable veth root ns
-        vrnetlab.run_command(
-            "ip link set RA up".split()
-        )
+        vrnetlab.run_command("ip link set RA up".split())
         # enable loop in ns
-        vrnetlab.run_command(
-            "ip netns exec fakehost ip link set dev lo up".split()
-        )
+        vrnetlab.run_command("ip netns exec fakehost ip link set dev lo up".split())
         # enable veth in fakehost ns
-        vrnetlab.run_command(
-            "ip netns exec fakehost ip link set FA up".split()
-        )
+        vrnetlab.run_command("ip netns exec fakehost ip link set FA up".split())
         # assign a dummy mac that will not collide with the real docker bridge mac address
         vrnetlab.run_command(
             f"ip netns exec fakehost  ip link set dev FA address {FAKEHOST_VETH_MAC_ADDR}".split()
         )
-        # configure a temporary ip address so the tftp server can start. 
+        # configure a temporary ip address so the tftp server can start.
         # modified later in the startup process in the create_tc_tap_mgmt_ifup function
         vrnetlab.run_command(
             f"ip netns exec fakehost ip addr add 169.254.254.254/16 dev FA".split()
