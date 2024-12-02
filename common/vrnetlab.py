@@ -98,7 +98,16 @@ class VM:
         self._cpu = cpu
         self._smp = smp
 
-        #  various settings
+        # set management interface mode to pass-through or host-forwarded
+        # host-forwarded is the original vrnetlab mode where a VM gets a static IP for its management address,
+        # which **does not** match the eth0 interface of a container.
+        # In pass-through mode the VM container uses the same IP as the container's eth0 interface and transparently forwards traffic between the two interfaces.
+        # See https://github.com/hellt/vrnetlab/issues/286
+        self.mgmt_nic_passthrough = (
+            os.getenv("CLAB_MGMT_PASSTHROUGH", "").lower() == "true"
+        )
+
+        # various settings
         self.uuid = None
         self.fake_start_date = None
         self.nic_type = "e1000"
@@ -725,6 +734,15 @@ class VM:
 class VR:
     def __init__(self, username, password):
         self.logger = logging.getLogger()
+
+        # set management interface mode to pass-through or host-forwarded
+        # host-forwarded is the original vrnetlab mode where a VM gets a static IP for its management address,
+        # which **does not** match the eth0 interface of a container.
+        # In pass-through mode the VM container uses the same IP as the container's eth0 interface and transparently forwards traffic between the two interfaces.
+        # See https://github.com/hellt/vrnetlab/issues/286
+        self.mgmt_nic_passthrough = (
+            os.getenv("CLAB_MGMT_PASSTHROUGH", "").lower() == "true"
+        )
 
         try:
             os.mkdir("/tftpboot")
