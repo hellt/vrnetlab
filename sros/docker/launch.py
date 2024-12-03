@@ -764,8 +764,8 @@ def get_version_specific_config(major_version: int):
 """
 
 
-# In mgmt host-forwarded mode, to allow writing config to tftp location we needed to spin up a normal
-# tftp server in container host system. To access the host from qemu VM
+# In host-forwarded mgmt mode, to allow writing config to tftp location we needed to spin up a normal
+# tftp server in a container host system. To access the host from qemu VM
 # we needed to put SR OS management interface in the container host network namespace
 # this is done by putting SR OS management interface with into a br-mgmt bridge
 # the bridge and SR OS mgmt interfaces will be addressed as follows
@@ -777,7 +777,7 @@ SROS_MGMT_V6_ADDR = "200::1"
 V6_PREFIX_LENGTH = "127"
 
 # In pass-through mode, we also spin up a tftp server, but in this case we create a new namespace
-# inside the container that simulates the IP addresing of the host.
+# inside the container that simulates the IP addressing of the host.
 # we redirect traffic to this ns by using tc flower filters
 FAKEHOST_VETH_MAC_ADDR = "3a:3a:3a:3a:3a:3a"
 
@@ -1300,6 +1300,7 @@ class SROS_integrated(SROS_vm):
         if self.mgmt_passthrough:
             self.smbios = [
                 f"type=1,product=TIMOS:address={self.mgmt_address_ipv4}@active "
+                f"address={self.mgmt_address_ipv6}@active "
                 f"license-file=tftp://{self.mgmt_gw_ipv4}/"
                 f"license.txt primary-config=tftp://{self.mgmt_gw_ipv4}/config.txt system-base-mac={vrnetlab.gen_mac(0)} "
                 f"{variant['timos_line']}"
@@ -1392,6 +1393,7 @@ class SROS_cp(SROS_vm):
         if self.mgmt_passthrough:
             self.smbios = [
                 f"type=1,product=TIMOS:address={self.mgmt_address_ipv4}@active "
+                f"address={self.mgmt_address_ipv6}@active "
                 f"license-file=tftp://{self.mgmt_gw_ipv4}/"
                 f"license.txt primary-config=tftp://{self.mgmt_gw_ipv4}/config.txt system-base-mac={vrnetlab.gen_mac(0)} "
                 f"{variant['cp']['timos_line']}"
