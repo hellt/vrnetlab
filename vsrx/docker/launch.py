@@ -52,6 +52,7 @@ class VSRX_vm(vrnetlab.VM):
             driveif="virtio",
             cpu="SandyBridge,vme=on,ss=on,vmx=on,f16c=on,rdrand=on,hypervisor=on,arat=on,tsc-adjust=on,umip=on,arch-capabilities=on,pdpe1gb=on,skip-l1dfl-vmentry=on,pschange-mc-no=on,bmi1=off,avx2=off,bmi2=off,erms=off,invpcid=off,rdseed=off,adx=off,smap=off,xsaveopt=off,abm=off,svm=on,aes=on",
             smp="2,sockets=1,cores=2,threads=1",
+            mgmt_passthrough=False,
         )
         self.nic_type = "virtio-net-pci"
         self.conn_mode = conn_mode
@@ -61,10 +62,14 @@ class VSRX_vm(vrnetlab.VM):
         with open("init.conf", "r") as file:
             cfg = file.read()
 
-        new_cfg = cfg.replace("{HOSTNAME}", hostname)
+        cfg = cfg.replace("{MGMT_IP_IPV4}", self.mgmt_address_ipv4)
+        cfg = cfg.replace("{MGMT_GW_IPV4}", self.mgmt_gw_ipv4)
+        cfg = cfg.replace("{MGMT_IP_IPV6}", self.mgmt_address_ipv6)
+        cfg = cfg.replace("{MGMT_GW_IPV6}", self.mgmt_gw_ipv6)
+        cfg = cfg.replace("{HOSTNAME}", self.hostname)
 
         with open("init.conf", "w") as file:
-            cfg = file.write(new_cfg)
+            cfg = file.write(cfg)
 
         self.startup_config()
         
