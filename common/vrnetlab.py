@@ -389,7 +389,6 @@ class VM:
         stdout, _ = run_command(["ip", "--json", "address", "show", "dev", "eth0"])
         command_json = json.loads(stdout.decode("utf-8"))
         intf_addrinfos = command_json[0]["addr_info"]
-
         mgmt_cidr_v4 = None
         mgmt_cidr_v6 = None
         for addrinfo in intf_addrinfos:
