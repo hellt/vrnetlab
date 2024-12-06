@@ -31,21 +31,26 @@ With this you can just add, say, veth pairs between the containers as you would 
 ## Connection modes
 As mentioned above, the major change this fork brings is the ability to run vrnetlab containers without requiring vr-xcon and by using container-native networking.
 
-The default option that we use in containerlab for this setting is `connection-mode=tc`. With this particular mode we use tc-mirred redirects to stitch container's interfaces `eth1+` with the ports of the qemu VM running inside.
+The default option that we use in containerlab for this setting is `connection-mode=tc`. With this particular mode we use **tc-mirred** redirects to stitch container's interfaces `eth1+` with the ports of the qemu VM running inside.
 
 ![tc](https://gitlab.com/rdodin/pics/-/wikis/uploads/4d31c06e6258e70edc887b17e0e758e0/image.png)
 
-Using tc redirection we get a transparent pipe between container's interfaces and VM's.
+Using tc redirection (tc-mirred) we get a transparent pipe between container's interfaces and VM's.
 
 We scrambled through many alternatives, which I described in
 [this post](https://web.archive.org/web/20220621131105/https://netdevops.me/2021/transparently-redirecting-packets/frames-between-interfaces/),
 but tc-redirect works best of them all.
 
-Other connection mode values are:
+### Mode List
 
-* bridge - creates a linux bridge and attaches `eth` and `tap` interfaces to it. Can't pass LACP traffic.
-* ovs-bridge - same as a regular bridge, but uses OvS. Can pass LACP traffic.
-* macvtap
+Full list of connection mode values:
+
+| Connection Mode | LACP Support        | Description |
+| --------------- | :-----------------: | :---------- |
+| tc-mirred       | :white_check_mark:  | Creates a linux bridge and attaches `eth` and `tap` interfaces to it.
+| bridge          | :last_quarter_moon: | No additional kernel modules and has native qemu/libvirt support. Does not support passing STP. Requires restricting `MAC_PAUSE` frames in order to support LACP.
+| ovs-bridge      | :white_check_mark:  | Same as a regular bridge, but uses OvS (Open vSwitch).
+| macvtap         | :x:                 | Requires mounting entire `/dev` to a container namespace. Needs file descriptor manipulation due to no native qemu support.
 
 ## Which vrnetlab routers are supported?
 Since the changes we made in this fork are VM specific, we added a few popular routing products:
