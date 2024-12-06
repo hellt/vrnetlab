@@ -38,8 +38,8 @@ The default option that we use in containerlab for this setting is `connection-m
 Using tc redirection (tc-mirred) we get a transparent pipe between container's interfaces and VM's.
 
 We scrambled through many alternatives, which I described in
-[this post](https://web.archive.org/web/20220621131105/https://netdevops.me/2021/transparently-redirecting-packets/frames-between-interfaces/),
-but tc-redirect works best of them all.
+[this post](https://web.archive.org/web/20220621131105/https://netdevops.me/2021/transparently-redirecting-packets/frames-between-interfaces/)
+(archive.org copy), but tc-redirect works best of them all.
 
 ### Mode List
 
