@@ -19,8 +19,14 @@ Yes, the term is bloated, what it actually means is that with the changes we mad
 
 With this you can just add, say, veth pairs between the containers as you would do normally, and vrnetlab will make sure that these ports get mapped to your router' ports. In essence, that allows you to work with your vrnetlab containers like with a normal container and get the datapath working in the same "native" way.
 
-> Although the changes we made here are of a general purpose and you can run vrnetlab routers with docker CLI or any other container runtime, the purpose of this work was to couple vrnetlab with containerlab.  
-> With this being said, we recommend the readers to start their journey from this [documentation entry](https://containerlab.srlinux.dev/manual/vrnetlab/) which will show you how easy it is to run routers in a containerized setting.
+> [!IMPORTANT]
+> Although the changes we made here are of a general purpose and you can run
+> vrnetlab routers with docker CLI or any other container runtime, the purpose
+> of this work was to couple vrnetlab with containerlab.
+>
+> With this being said, we recommend the readers to start their journey from
+> this [documentation entry](https://containerlab.srlinux.dev/manual/vrnetlab/)
+> which will show you how easy it is to run routers in a containerized setting.
 
 ## Connection modes
 As mentioned above, the major change this fork brings is the ability to run vrnetlab containers without requiring vr-xcon and by using container-native networking.
