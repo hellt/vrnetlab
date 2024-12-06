@@ -8,7 +8,7 @@ The documentation provided in this fork only explains the parts that have been c
 At [containerlab](https://containerlab.srlinux.dev) we needed to have [a way to run virtual routers](https://containerlab.srlinux.dev/manual/vrnetlab/) alongside the containerized Network Operating Systems.
 
 Vrnetlab provides a perfect machinery to package most-common routing VMs in the container packaging. What upstream vrnetlab doesn't do, though, is creating datapath between the VMs in a "container-native" way.  
-Vrnetlab relies on a separate VM (vr-xcon) to stich sockets exposed on each container and that doesn't play well with the regular ways of interconnecting container workloads.
+Vrnetlab relies on a separate VM (vr-xcon) to stitch sockets exposed on each container and that doesn't play well with the regular ways of interconnecting container workloads.
 
 This fork adds additional option for `launch.py` script of the supported VMs called `connection-mode`. This option allows to choose the way vrnetlab will create datapath for the launched VMs.
 
