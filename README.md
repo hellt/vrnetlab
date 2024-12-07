@@ -67,7 +67,7 @@ interfaces and those of the VMs running within.
 
 We scrambled through many connection alternatives, which are described in
 [this post](https://netdevops.me/2021/transparently-redirecting-packetsframes-between-interfaces/),
-but tc redirect (tc-mirred :star:) works best of them all.
+but tc redirect (tc-mirred :star:) works best of all.
 
 ### Mode List
 
