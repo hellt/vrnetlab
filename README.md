@@ -16,16 +16,16 @@ This fork adds the additional option `connection-mode` to the `launch.py` script
 The `connection-mode` values make it possible to run vrnetlab containers with networking that doesn't require a separate container and is native to tools such as docker.
 
 ### Container-native networking?
-Yes, the term is bloated, what it actually means is that with the changes we made in this fork it is possible to add interfaces to a container that hosts a qemu VM and vrnetlab will recognize those interfaces and stitch them with the VM interfaces.
+Yes, the term is bloated. What it actually means is this fork makes it possible to add interfaces to a container hosting a qemu VM and vrnetlab will recognize those interfaces and stitch them with the VM interfaces.
 
-With this you can just add, say, veth pairs between the containers as you would do normally, and vrnetlab will make sure that these ports get mapped to your router' ports. In essence, that allows you to work with your vrnetlab containers like with a normal container and get the datapath working in the same "native" way.
+With this you can, for example, add veth pairs between containers as you would normally and vrnetlab will make sure these ports get mapped to your routers' ports. In essence, that allows you to work with your vrnetlab containers like a normal container and get the datapath working in the same "native" way.
 
 > [!IMPORTANT]
 > Although the changes we made here are of a general purpose and you can run
 > vrnetlab routers with docker CLI or any other container runtime, the purpose
 > of this work was to couple vrnetlab with containerlab.
 >
-> With this being said, we recommend the readers to start their journey from
+> With this being said, we recommend the readers start their journey from
 > this [documentation entry](https://containerlab.dev/manual/vrnetlab/)
 > which will show you how easy it is to run routers in a containerized setting.
 
