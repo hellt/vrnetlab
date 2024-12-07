@@ -30,17 +30,23 @@ With this you can, for example, add veth pairs between containers as you would n
 > which will show you how easy it is to run routers in a containerized setting.
 
 ## Connection modes
-As mentioned above, the major change this fork brings is the ability to run vrnetlab containers without requiring [vr-xcon](https://github.com/vrnetlab/vrnetlab/tree/master/vr-xcon) and by using container-native networking.
 
-The default option that we use in containerlab for this setting is `connection-mode=tc`. With this particular mode we use **tc-mirred** redirects to stitch container's interfaces `eth1+` with the ports of the qemu VM running inside.
+As mentioned above, the major change this fork brings is the ability to run
+vrnetlab containers without requiring [vr-xcon](https://github.com/vrnetlab/vrnetlab/tree/master/vr-xcon)
+and instead using container-native networking.
 
-![tc](https://gitlab.com/rdodin/pics/-/wikis/uploads/4d31c06e6258e70edc887b17e0e758e0/image.png)
+For containerlab the default connection mode value is `connection-mode=tc`.
+With this particular mode we use **tc-mirred** redirects to stitch a container's
+interfaces `eth1+` with the ports of the qemu VM running inside.
 
-Using tc redirection (tc-mirred) we get a transparent pipe between container's interfaces and VM's.
+![diagram showing network connections via tc redirects](https://gitlab.com/rdodin/pics/-/wikis/uploads/4d31c06e6258e70edc887b17e0e758e0/image.png)
 
-We scrambled through many alternatives, which I described in
+Using tc redirection (tc-mirred) we get a transparent pipe between a container's
+interfaces and those of the VMs running within.
+
+We scrambled through many connection alternatives, which are described in
 [this post](https://netdevops.me/2021/transparently-redirecting-packetsframes-between-interfaces/),
-but tc redirect (tc-mirred) works best of them all.
+but tc redirect (tc-mirred :star:) works best of them all.
 
 ### Mode List
 
