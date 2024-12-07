@@ -1,8 +1,8 @@
 # vrnetlab - VR Network Lab
 
-This is a fork of the original [plajjan/vrnetlab](https://github.com/plajjan/vrnetlab) project. The fork has been created specifically to make vrnetlab-based images to be runnable by [containerlab](https://containerlab.srlinux.dev).
+This is a fork of the original [plajjan/vrnetlab](https://github.com/plajjan/vrnetlab) project and was created specifically to make vrnetlab-based images runnable by [containerlab](https://containerlab.srlinux.dev).
 
-The documentation provided in this fork only explains the parts that have been changed in any way from the upstream project. To get a general overview of the vrnetlab project itself, consider reading the docs of the upstream repo.
+The documentation provided in this fork only explains the parts that have been changed from the upstream project. To get a general overview of the vrnetlab project itself, consider reading the [docs of the upstream repo](https://github.com/vrnetlab/vrnetlab/blob/master/README.md).
 
 ## What is this fork about?
 At [containerlab](https://containerlab.srlinux.dev) we needed to have [a way to run virtual routers](https://containerlab.srlinux.dev/manual/vrnetlab/) alongside the containerized Network Operating Systems.
