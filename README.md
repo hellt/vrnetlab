@@ -25,7 +25,7 @@ With this you can just add, say, veth pairs between the containers as you would 
 > of this work was to couple vrnetlab with containerlab.
 >
 > With this being said, we recommend the readers to start their journey from
-> this [documentation entry](https://containerlab.srlinux.dev/manual/vrnetlab/)
+> this [documentation entry](https://containerlab.dev/manual/vrnetlab/)
 > which will show you how easy it is to run routers in a containerized setting.
 
 ## Connection modes
