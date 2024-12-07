@@ -33,7 +33,7 @@ With this you can, for example, add veth pairs between containers as you would n
 
 As mentioned above, the major change this fork brings is the ability to run
 vrnetlab containers without requiring [vr-xcon](https://github.com/vrnetlab/vrnetlab/tree/master/vr-xcon)
-and instead using container-native networking.
+and instead uses container-native networking.
 
 For containerlab the default connection mode value is `connection-mode=tc`.
 With this particular mode we use **tc-mirred** redirects to stitch a container's
