@@ -47,7 +47,7 @@ Full list of connection mode values:
 
 | Connection Mode | LACP Support        | Description |
 | --------------- | :-----------------: | :---------- |
-| tc-mirred       | :white_check_mark:  | Creates a linux bridge and attaches `eth` and `tap` interfaces to it.
+| tc-mirred       | :white_check_mark:  | Creates a linux bridge and attaches `eth` and `tap` interfaces to it. Cleanest solution for point-to-point links.
 | bridge          | :last_quarter_moon: | No additional kernel modules and has native qemu/libvirt support. Does not support passing STP. Requires restricting `MAC_PAUSE` frames in order to support LACP.
 | ovs-bridge      | :white_check_mark:  | Same as a regular bridge, but uses OvS (Open vSwitch).
 | macvtap         | :x:                 | Requires mounting entire `/dev` to a container namespace. Needs file descriptor manipulation due to no native qemu support.
