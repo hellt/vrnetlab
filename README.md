@@ -1,26 +1,45 @@
 # vrnetlab - VR Network Lab
 
-This is a fork of the original [plajjan/vrnetlab](https://github.com/plajjan/vrnetlab) project and was created specifically to make vrnetlab-based images runnable by [containerlab](https://containerlab.srlinux.dev).
+This is a fork of the original [plajjan/vrnetlab](https://github.com/plajjan/vrnetlab)
+project and was created specifically to make vrnetlab-based images runnable by
+[containerlab](https://containerlab.srlinux.dev).
 
-The documentation provided in this fork only explains the parts that have been changed from the upstream project. To get a general overview of the vrnetlab project itself, consider reading the [docs of the upstream repo](https://github.com/vrnetlab/vrnetlab/blob/master/README.md).
+The documentation provided in this fork only explains the parts that have been
+changed from the upstream project. To get a general overview of the vrnetlab
+project itself, consider reading the [docs of the upstream repo](https://github.com/vrnetlab/vrnetlab/blob/master/README.md).
 
 ## What is this fork about?
 
-At [containerlab](https://containerlab.srlinux.dev) we needed to have [a way to run virtual routers](https://containerlab.srlinux.dev/manual/vrnetlab/) alongside the containerized Network Operating Systems.
+At [containerlab](https://containerlab.srlinux.dev) we needed to have
+[a way to run virtual routers](https://containerlab.srlinux.dev/manual/vrnetlab/)
+alongside the containerized Network Operating Systems.
 
-Vrnetlab provides perfect machinery to package most-common routing VMs in container packaging. What upstream vrnetlab doesn't do, though, is create datapaths between the VMs in a "container-native" way.
+Vrnetlab provides perfect machinery to package most-common routing VMs in
+container packaging. What upstream vrnetlab doesn't do, though, is create
+datapaths between the VMs in a "container-native" way.
 
-Vrnetlab relies on a separate VM ([vr-xcon](https://github.com/vrnetlab/vrnetlab/tree/master/vr-xcon)) to stitch sockets exposed on each container and that doesn't play well with the regular ways of interconnecting container workloads.
+Vrnetlab relies on a separate VM ([vr-xcon](https://github.com/vrnetlab/vrnetlab/tree/master/vr-xcon))
+to stitch sockets exposed on each container and that doesn't play well with the
+regular ways of interconnecting container workloads.
 
-This fork adds the additional option `connection-mode` to the `launch.py` script of supported VMs. The `connection-mode` option controls how vrnetlab creates datapaths for launched VMs.
+This fork adds the additional option `connection-mode` to the `launch.py` script
+of supported VMs. The `connection-mode` option controls how vrnetlab creates
+datapaths for launched VMs.
 
-The `connection-mode` values make it possible to run vrnetlab containers with networking that doesn't require a separate container and is native to tools such as docker.
+The `connection-mode` values make it possible to run vrnetlab containers with
+networking that doesn't require a separate container and is native to tools such
+as docker.
 
 ### Container-native networking?
 
-Yes, the term is bloated. What it actually means is this fork makes it possible to add interfaces to a container hosting a qemu VM and vrnetlab will recognize those interfaces and stitch them with the VM interfaces.
+Yes, the term is bloated. What it actually means is this fork makes it possible
+to add interfaces to a container hosting a qemu VM and vrnetlab will recognize
+those interfaces and stitch them with the VM interfaces.
 
-With this you can, for example, add veth pairs between containers as you would normally and vrnetlab will make sure these ports get mapped to your routers' ports. In essence, that allows you to work with your vrnetlab containers like a normal container and get the datapath working in the same "native" way.
+With this you can, for example, add veth pairs between containers as you would
+normally and vrnetlab will make sure these ports get mapped to your routers'
+ports. In essence, that allows you to work with your vrnetlab containers like a
+normal container and get the datapath working in the same "native" way.
 
 > [!IMPORTANT]
 > Although the changes we made here are of a general purpose and you can run
@@ -63,7 +82,8 @@ Full list of connection mode values:
 
 ## Which vrnetlab routers are supported?
 
-Since the changes we made in this fork are VM specific, we added a few popular routing products:
+Since the changes we made in this fork are VM specific, we added a few popular
+routing products:
 
 * Arista vEOS
 * Cisco XRv9k
