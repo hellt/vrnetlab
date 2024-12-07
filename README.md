@@ -39,7 +39,7 @@ Using tc redirection (tc-mirred) we get a transparent pipe between container's i
 
 We scrambled through many alternatives, which I described in
 [this post](https://netdevops.me/2021/transparently-redirecting-packetsframes-between-interfaces/),
-but tc-redirect works best of them all.
+but tc redirect (tc-mirred) works best of them all.
 
 ### Mode List
 
