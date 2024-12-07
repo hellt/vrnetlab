@@ -7,13 +7,13 @@ The documentation provided in this fork only explains the parts that have been c
 ## What is this fork about?
 At [containerlab](https://containerlab.srlinux.dev) we needed to have [a way to run virtual routers](https://containerlab.srlinux.dev/manual/vrnetlab/) alongside the containerized Network Operating Systems.
 
-Vrnetlab provides perfect machinery to package most-common routing VMs in the container packaging. What upstream vrnetlab doesn't do, though, is creating datapath between the VMs in a "container-native" way.
+Vrnetlab provides perfect machinery to package most-common routing VMs in container packaging. What upstream vrnetlab doesn't do, though, is create datapaths between the VMs in a "container-native" way.
 
 Vrnetlab relies on a separate VM ([vr-xcon](https://github.com/vrnetlab/vrnetlab/tree/master/vr-xcon)) to stitch sockets exposed on each container and that doesn't play well with the regular ways of interconnecting container workloads.
 
-This fork adds additional option for `launch.py` script of the supported VMs called `connection-mode`. This option allows to choose the way vrnetlab will create datapath for the launched VMs.
+This fork adds the additional option `connection-mode` to the `launch.py` script of supported VMs. The `connection-mode` option controls how vrnetlab creates datapaths for launched VMs.
 
-By adding a few options a `connection-mode` value can be set to, we made it possible to run vrnetlab containers with the networking that doesn't require a separate container and is native to the tools like docker.
+The `connection-mode` values make it possible to run vrnetlab containers with networking that doesn't require a separate container and is native to tools such as docker.
 
 ### Container-native networking?
 Yes, the term is bloated, what it actually means is that with the changes we made in this fork it is possible to add interfaces to a container that hosts a qemu VM and vrnetlab will recognize those interfaces and stitch them with the VM interfaces.
