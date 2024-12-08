@@ -103,7 +103,14 @@ class Dell_Sonic_VM(vrnetlab.VM):
         """Do the actual bootstrap config"""
         self.logger.info("applying bootstrap configuration")
         self.wait_write("sudo -i", "$")
-        self.wait_write("/usr/sbin/ip address add 10.0.0.15/24 dev eth0", "#")
+        # set ipv4/6 address to the management interface
+        self.wait_write(
+            f"sudo /usr/sbin/ip address add {self.mgmt_address_ipv4} dev eth0", "#"
+        )
+        # note, v6 address is not being applied for whatever reason
+        self.wait_write(
+            f"sudo /usr/sbin/ip -6 address add {self.mgmt_address_ipv6} dev eth0", "#"
+        )
         self.wait_write("passwd -q %s" % (self.username))
         self.wait_write(self.password, "New password:")
         self.wait_write(self.password, "password:")

@@ -150,7 +150,7 @@ class C8000v_vm(vrnetlab.VM):
     def bootstrap_config(self):
         """Do the actual bootstrap config"""
         self.logger.info("applying bootstrap configuration")
-        
+
         v4_mgmt_address = vrnetlab.cidr_to_ddn(self.mgmt_address_ipv4)
 
         self.wait_write("", None)
@@ -166,9 +166,9 @@ class C8000v_vm(vrnetlab.VM):
         else:
             self.wait_write("ip domain-name example.com")
         self.wait_write("crypto key generate rsa modulus 2048")
-        
+
         self.wait_write("ipv6 unicast-routing")
-        
+
         self.wait_write("vrf definition clab-mgmt")
         self.wait_write("description Containerlab management VRF (DO NOT DELETE)")
         self.wait_write("address-family ipv4")
