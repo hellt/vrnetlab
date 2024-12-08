@@ -53,8 +53,8 @@ The following protocols are enabled on the management interface:
 
 | ID              | Description               | Default    |
 |-----------------|---------------------------|------------|
-| USERNAME        | SSH username              | vrnetlab   |
-| PASSWORD        | SSH password              | VR-netlab9 |
+| USERNAME        | SSH username              | admin      |
+| PASSWORD        | SSH password              | admin      |
 | HOSTNAME        | device hostname           | vios       |
 | TRACE           | enable trace logging      | false      |
 | CONNECTION_MODE | interface connection mode | tc         |
@@ -75,10 +75,7 @@ name: vios-lab
 topology:
   kinds:
     linux:
-      image: vrnetlab/vr-vios:15.9.3M6
-      env:
-        USERNAME: admin
-        PASSWORD: admin
+      image: vrnetlab/cisco_vios:15.9.3M6
   nodes:
     vios1:
       kind: linux

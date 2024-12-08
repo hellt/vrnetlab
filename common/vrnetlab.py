@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import datetime
+import ipaddress
 import json
 import logging
 import math
@@ -10,7 +11,6 @@ import re
 import subprocess
 import telnetlib
 import time
-import ipaddress
 from pathlib import Path
 
 MAX_RETRIES = 60
@@ -78,6 +78,7 @@ class VM:
         provision_pci_bus=True,
         cpu="host",
         smp="1",
+        mgmt_passthrough=False,
         min_dp_nics=0,
     ):
         self.logger = logging.getLogger()
@@ -98,7 +99,7 @@ class VM:
         self._cpu = cpu
         self._smp = smp
 
-        #  various settings
+        # various settings
         self.uuid = None
         self.fake_start_date = None
         self.nic_type = "e1000"
@@ -109,6 +110,26 @@ class VM:
         # to have them allocated sequential from eth1
         self.highest_provisioned_nic_num = 0
 
+        # Whether the management interface is pass-through or host-forwarded.
+        # Host-forwarded is the original vrnetlab mode where a VM gets a static IP for its management address,
+        # which **does not** match the eth0 interface of a container.
+        # In pass-through mode the VM container uses the same IP as the container's eth0 interface and transparently forwards traffic between the two interfaces.
+        # See https://github.com/hellt/vrnetlab/issues/286
+        self.mgmt_passthrough = mgmt_passthrough
+        mgmt_passthrough_override = os.environ.get("CLAB_MGMT_PASSTHROUGH", "")
+        if mgmt_passthrough_override:
+            self.mgmt_passthrough = mgmt_passthrough_override.lower() == "true"
+
+        # Populate management IP and gateway
+        if self.mgmt_passthrough:
+            self.mgmt_address_ipv4, self.mgmt_address_ipv6 = self.get_mgmt_address()
+            self.mgmt_gw_ipv4, self.mgmt_gw_ipv6 = self.get_mgmt_gw()
+        else:
+            self.mgmt_address_ipv4 = "10.0.0.15/24"
+            self.mgmt_address_ipv6 = "2001:db8::2/64"
+            self.mgmt_gw_ipv4 = "10.0.0.2"
+            self.mgmt_gw_ipv6 = "2001:db8::1"
+
         self.insuffucient_nics = False
         self.min_nics = 0
         # if an image needs minimum amount of dataplane nics to bootup, specify
@@ -116,9 +137,9 @@ class VM:
             self.min_nics = min_dp_nics
 
         # management subnet properties, defaults
-        self.mgmt_subnet    = "10.0.0.0/24"
-        self.mgmt_host_ip   = 2
-        self.mgmt_guest_ip  = 15
+        self.mgmt_subnet = "10.0.0.0/24"
+        self.mgmt_host_ip = 2
+        self.mgmt_guest_ip = 15
 
         #  Default TCP ports forwarded (TODO tune per platform):
         #  80    - http
@@ -129,7 +150,7 @@ class VM:
         #  9339  - iana gnmi/gnoi
         #  32767 - gnmi/gnoi juniper
         #  57400 - nokia gnmi/gnoi
-        self.mgmt_tcp_ports = [80,443,830,6030,8080,9339,32767,57400]
+        self.mgmt_tcp_ports = [80, 443, 830, 6030, 8080, 9339, 32767, 57400]
 
         # we setup pci bus by default
         self.provision_pci_bus = provision_pci_bus
@@ -299,20 +320,51 @@ class VM:
         ip link set $TAP_IF mtu 65000
 
         # create tc eth<->tap redirect rules
-        tc qdisc add dev eth$INDEX ingress
-        tc filter add dev eth$INDEX parent ffff: protocol all u32 match u8 0 0 action mirred egress redirect dev tap$INDEX
+        tc qdisc add dev eth$INDEX clsact
+        tc filter add dev eth$INDEX ingress flower action mirred egress redirect dev tap$INDEX
 
-        tc qdisc add dev $TAP_IF ingress
-        tc filter add dev $TAP_IF parent ffff: protocol all u32 match u8 0 0 action mirred egress redirect dev eth$INDEX
+        tc qdisc add dev $TAP_IF clsact
+        tc filter add dev $TAP_IF ingress flower action mirred egress redirect dev eth$INDEX
         """
 
         with open("/etc/tc-tap-ifup", "w") as f:
             f.write(ifup_script)
         os.chmod("/etc/tc-tap-ifup", 0o777)
 
+    def create_tc_tap_mgmt_ifup(self):
+        """Create tap ifup script that is used in tc datapath mode, specifically for the management interface"""
+        ifup_script = """#!/bin/bash
+
+        ip link set tap0 up
+        ip link set tap0 mtu 65000
+
+        # create tc eth<->tap redirect rules
+
+        tc qdisc add dev eth0 clsact
+        # exception for TCP ports 5000-5007
+        tc filter add dev eth0 ingress prio 1 protocol ip flower ip_proto tcp dst_port 5000-5007 action pass
+        # mirror ARP traffic to container
+        tc filter add dev eth0 ingress prio 2 protocol arp flower action mirred egress mirror dev tap0
+        # redirect rest of ingress traffic of eth0 to egress of tap0
+        tc filter add dev eth0 ingress prio 3 flower action mirred egress redirect dev tap0
+
+        tc qdisc add dev tap0 clsact
+        # redirect all ingress traffic of tap0 to egress of eth0
+        tc filter add dev tap0 ingress flower action mirred egress redirect dev eth0
+
+        # clone management MAC of the VM
+        ip link set dev eth0 address {MGMT_MAC}
+        """
+
+        ifup_script = ifup_script.replace("{MGMT_MAC}", self.mgmt_mac)
+
+        with open("/etc/tc-tap-mgmt-ifup", "w") as f:
+            f.write(ifup_script)
+        os.chmod("/etc/tc-tap-mgmt-ifup", 0o777)
+
     def gen_mgmt(self):
         """Generate qemu args for the mgmt interface(s)
-        
+
         Default TCP ports forwarded:
           80    - http
           443   - https
@@ -323,33 +375,96 @@ class VM:
           32767 - gnmi/gnoi juniper
           57400 - nokia gnmi/gnoi
         """
-        if self.mgmt_host_ip+1>=self.mgmt_guest_ip:
-            self.logger.error("Guest IP (%s) must be at least 2 higher than host IP(%s)", 
-                              self.mgmt_guest_ip, self.mgmt_host_ip)
+        if self.mgmt_host_ip + 1 >= self.mgmt_guest_ip:
+            self.logger.error(
+                "Guest IP (%s) must be at least 2 higher than host IP(%s)",
+                self.mgmt_guest_ip,
+                self.mgmt_host_ip,
+            )
 
         network = ipaddress.ip_network(self.mgmt_subnet)
         host = str(network[self.mgmt_host_ip])
-        dns = str(network[self.mgmt_host_ip+1])
+        dns = str(network[self.mgmt_host_ip + 1])
         guest = str(network[self.mgmt_guest_ip])
 
         res = []
-        # mgmt interface is special - we use qemu user mode network with DHCP
         res.append("-device")
-        mac = (
+        self.mgmt_mac = (
             "c0:00:01:00:ca:fe"
             if getattr(self, "_static_mgmt_mac", False)
             else gen_mac(0)
         )
-        res.append(self.nic_type + f",netdev=p00,mac={mac}")
+
+        res.append(self.nic_type + f",netdev=p00,mac={self.mgmt_mac}")
         res.append("-netdev")
-        res.append(
-            f"user,id=p00,net={self.mgmt_subnet},host={host},dns={dns},dhcpstart={guest}," +
-            f"hostfwd=tcp:0.0.0.0:22-{guest}:22," +   # ssh
-            f"hostfwd=udp:0.0.0.0:161-{guest}:161," +  # snmp
-            (",".join([ f"hostfwd=tcp:0.0.0.0:{p}-{guest}:{p}" for p in self.mgmt_tcp_ports ])) +
-            ",tftp=/tftpboot"
-        )
+
+        if self.mgmt_passthrough:
+            # mgmt interface is passthrough - we just create a normal mirred tap interface
+            res.append(
+                "tap,id=p00,ifname=tap0,script=/etc/tc-tap-mgmt-ifup,downscript=no"
+            )
+            self.create_tc_tap_mgmt_ifup()
+        else:
+            # mgmt interface is host-forwarded - we use qemu user mode network
+            # with hostfwd rules to forward ports from the host to the guest
+            res.append(
+                f"user,id=p00,net={self.mgmt_subnet},host={host},dns={dns},dhcpstart={guest},"
+                + f"hostfwd=tcp:0.0.0.0:22-{guest}:22,"  # ssh
+                + f"hostfwd=udp:0.0.0.0:161-{guest}:161,"  # snmp
+                + (
+                    ",".join(
+                        [
+                            f"hostfwd=tcp:0.0.0.0:{p}-{guest}:{p}"
+                            for p in self.mgmt_tcp_ports
+                        ]
+                    )
+                )
+                + ",tftp=/tftpboot"
+            )
+
         return res
+
+    def get_mgmt_address(self):
+        """Returns the IPv4 and IPv6 address of the eth0 interface of the container"""
+        stdout, _ = run_command(["ip", "--json", "address", "show", "dev", "eth0"])
+        command_json = json.loads(stdout.decode("utf-8"))
+        intf_addrinfos = command_json[0]["addr_info"]
+        mgmt_cidr_v4 = None
+        mgmt_cidr_v6 = None
+        for addrinfo in intf_addrinfos:
+            if addrinfo["family"] == "inet" and addrinfo["scope"] == "global":
+                mgmt_address_v4 = addrinfo["local"]
+                mgmt_prefixlen_v4 = addrinfo["prefixlen"]
+                mgmt_cidr_v4 = mgmt_address_v4 + "/" + str(mgmt_prefixlen_v4)
+            if addrinfo["family"] == "inet6" and addrinfo["scope"] == "global":
+                mgmt_address_v6 = addrinfo["local"]
+                mgmt_prefixlen_v6 = addrinfo["prefixlen"]
+                mgmt_cidr_v6 = mgmt_address_v6 + "/" + str(mgmt_prefixlen_v6)
+
+        if not mgmt_cidr_v4:
+            raise ValueError("No IPv4 address set on management interface eth0!")
+
+        return mgmt_cidr_v4, mgmt_cidr_v6
+
+    def get_mgmt_gw(self):
+        """Returns the IPv4 and IPv6 default gateways of the container, used for generating the management default route"""
+        stdout_v4, _ = run_command(["ip", "--json", "-4", "route", "show", "default"])
+        command_json_v4 = json.loads(stdout_v4.decode("utf-8"))
+        try:
+            mgmt_gw_v4 = command_json_v4[0]["gateway"]
+        except IndexError as e:
+            raise IndexError(
+                "No default gateway route on management interface eth0!"
+            ) from e
+
+        stdout_v6, _ = run_command(["ip", "--json", "-6", "route", "show", "default"])
+        command_json_v6 = json.loads(stdout_v6.decode("utf-8"))
+        try:
+            mgmt_gw_v6 = command_json_v6[0]["gateway"]
+        except IndexError:
+            mgmt_gw_v6 = None
+
+        return mgmt_gw_v4, mgmt_gw_v6
 
     def nic_provision_delay(self) -> None:
         self.logger.debug(
@@ -526,7 +641,9 @@ class VM:
         self.stop()
         self.start()
 
-    def wait_write(self, cmd, wait="__defaultpattern__", con=None, clean_buffer=False, hold=""):
+    def wait_write(
+        self, cmd, wait="__defaultpattern__", con=None, clean_buffer=False, hold=""
+    ):
         """Wait for something on the serial port and then send command
 
         Defaults to using self.tn as connection but this can be overridden
@@ -548,8 +665,10 @@ class VM:
             self.logger.trace(f"waiting for '{wait}' on {con_name}")
             res = con.read_until(wait.encode())
 
-            while (hold and (hold in res.decode())):
-                self.logger.trace(f"Holding pattern '{hold}' detected: {res.decode()}, retrying in 10s...")
+            while hold and (hold in res.decode()):
+                self.logger.trace(
+                    f"Holding pattern '{hold}' detected: {res.decode()}, retrying in 10s..."
+                )
                 con.write("\r".encode())
                 time.sleep(10)
                 res = con.read_until(wait.encode())
@@ -661,8 +780,18 @@ class VM:
 
 
 class VR:
-    def __init__(self, username, password):
+    def __init__(self, username, password, mgmt_passthrough: bool = False):
         self.logger = logging.getLogger()
+
+        # Whether the management interface is pass-through or host-forwarded.
+        # Host-forwarded is the original vrnetlab mode where a VM gets a static IP for its management address,
+        # which **does not** match the eth0 interface of a container.
+        # In pass-through mode the VM container uses the same IP as the container's eth0 interface and transparently forwards traffic between the two interfaces.
+        # See https://github.com/hellt/vrnetlab/issues/286
+        self.mgmt_passthrough = mgmt_passthrough
+        mgmt_passthrough_override = os.environ.get("CLAB_MGMT_PASSTHROUGH", "")
+        if mgmt_passthrough_override:
+            self.mgmt_passthrough = mgmt_passthrough_override.lower() == "true"
 
         try:
             os.mkdir("/tftpboot")
@@ -708,3 +837,18 @@ def get_digits(input_str: str) -> int:
 
     non_string_chars = re.findall(r"\d", input_str)
     return int("".join(non_string_chars))
+
+
+def cidr_to_ddn(prefix: str) -> list[str]:
+    """
+    Convert a IPv4 CIDR notation prefix to address + mask in DDN notation
+
+    Returns a list of IP address (str) and mask (str) in dotted decimal
+
+    Example:
+    get_ddn_mask('192.168.0.1/24')
+    returns ['192.168.0.1' ,'255.255.255.0']
+    """
+
+    network = ipaddress.IPv4Interface(prefix)
+    return [str(network.ip), str(network.netmask)]
