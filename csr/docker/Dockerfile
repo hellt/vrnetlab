@@ -1,4 +1,4 @@
-FROM ubuntu:20.04 
+FROM public.ecr.aws/docker/library/debian:bookworm-slim
 MAINTAINER Kristian Larsson <kristian@spritelink.net>
 MAINTAINER Denis Pointer <git@dpnet.ca>
 

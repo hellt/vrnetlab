@@ -72,22 +72,9 @@ class XRV_vm(vrnetlab.VM):
 
     def gen_mgmt(self):
         """Generate qemu args for the mgmt interface(s)"""
-        res = []
-        # mgmt interface
-        res.extend(
-            ["-device", "virtio-net-pci,netdev=mgmt,mac=%s" % vrnetlab.gen_mac(0)]
-        )
-        res.extend(
-            [
-                "-netdev",
-                "user,id=mgmt,net=10.0.0.0/24,"
-                "tftp=/tftpboot,"
-                "hostfwd=tcp:0.0.0.0:22-10.0.0.15:22,"
-                "hostfwd=udp:0.0.0.0:161-10.0.0.15:161,"
-                "hostfwd=tcp:0.0.0.0:830-10.0.0.15:830,"
-                "hostfwd=tcp:0.0.0.0:57400-10.0.0.15:57400"
-            ]
-        )
+        
+        res = super().gen_mgmt()
+    
         # dummy interface for xrv9k ctrl interface
         res.extend(
             [
@@ -244,13 +231,18 @@ class XRV_vm(vrnetlab.VM):
         self.wait_write("description Containerlab management VRF (DO NOT DELETE)")
         self.wait_write("address-family ipv4 unicast")
         self.wait_write("exit")
+        self.wait_write("address-family ipv6 unicast")
+        self.wait_write("exit")
         self.wait_write("exit")
         
         # add static route for management
         self.wait_write("router static")
         self.wait_write("vrf clab-mgmt")
         self.wait_write("address-family ipv4 unicast")
-        self.wait_write("0.0.0.0/0 10.0.0.2")
+        self.wait_write(f"0.0.0.0/0 {self.mgmt_gw_ipv4}")
+        self.wait_write("exit")
+        self.wait_write("address-family ipv6 unicast")
+        self.wait_write(f"::/0 {self.mgmt_gw_ipv6}")
         self.wait_write("exit")
         self.wait_write("exit")
         self.wait_write("exit")
@@ -274,10 +266,10 @@ class XRV_vm(vrnetlab.VM):
         self.wait_write("interface MgmtEth0/RP0/CPU0/0")
         self.wait_write("vrf clab-mgmt")
         self.wait_write("no shutdown")
-        self.wait_write("ipv4 address 10.0.0.15/24")
-        self.wait_write("exit")
+        self.wait_write(f"ipv4 address {self.mgmt_address_ipv4}")
+        self.wait_write(f"ipv6 address {self.mgmt_address_ipv6}")
         self.wait_write("commit")
-        self.wait_write("exit")
+        self.wait_write("end")
 
         return True
 
@@ -365,7 +357,7 @@ if __name__ == "__main__":
     parser.add_argument("--nics", type=int, default=128, help="Number of NICS")
     parser.add_argument('--install', action="store_true", help="Pre-install image")
     parser.add_argument(
-        "--vcpu", type=int, default=2, help="Number of cpu cores to use"
+        "--vcpu", type=int, default=4, help="Number of cpu cores to use"
     )
     parser.add_argument(
         "--ram", type=int, default=16384, help="Number RAM to use in MB"

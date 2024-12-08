@@ -837,3 +837,17 @@ def get_digits(input_str: str) -> int:
 
     non_string_chars = re.findall(r"\d", input_str)
     return int("".join(non_string_chars))
+
+def cidr_to_ddn(prefix: str) -> list[str]:
+    """
+    Convert a IPv4 CIDR notation prefix to address + mask in DDN notation
+    
+    Returns a list of IP address (str) and mask (str) in dotted decimal 
+    
+    Example: 
+    get_ddn_mask('192.168.0.1/24') 
+    returns ['192.168.0.1' ,'255.255.255.0']
+    """
+    
+    network = ipaddress.IPv4Interface(prefix)
+    return [str(network.ip), str(network.netmask)]

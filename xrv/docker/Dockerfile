@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM public.ecr.aws/docker/library/debian:bookworm-slim
 LABEL org.opencontainers.image.authors="roman@dodin.dev"
 
 ARG DEBIAN_FRONTEND=noninteractive

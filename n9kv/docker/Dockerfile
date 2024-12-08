@@ -1,11 +1,9 @@
-FROM ubuntu:20.04
-LABEL maintainer="Kristian Larsson <kristian@spritelink.net>"
-LABEL maintainer="Roman Dodin <dodin.roman@gmail.com>"
+FROM public.ecr.aws/docker/library/debian:bookworm-slim
+LABEL maintainer="Roman Dodin <roman@dodin.dev>, Kaelem Chandra <kc@kaelem.net>"
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update -qy \
-   && apt-get upgrade -qy \
-   && apt-get install -y \
+   && apt-get install -y --no-install-recommends \
    bridge-utils \
    iproute2 \
    python3-ipy \
