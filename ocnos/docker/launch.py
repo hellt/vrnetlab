@@ -100,23 +100,28 @@ class OCNOS_vm(vrnetlab.VM):
         """Do the actual bootstrap config"""
         self.logger.info("applying bootstrap configuration")
         self.wait_write("", None)
-        self.wait_write("enable", ">")
-        self.wait_write("configure terminal")
-        self.wait_write(
-            "username %s role network-admin password %s"
-            % (self.username, self.password)
-        )
 
-        # configure mgmt interface
-        self.wait_write("interface eth0")
-        self.wait_write("ip address 10.0.0.15 255.255.255.0")
-        self.wait_write("exit")
+        (ridx, match, res) = self.tn.expect([b"OcNOS> "], 1)
+        if match:  # got a match!
+            if ridx == 0:  # write config
+                self.logger.debug("matched logged in prompt")
+                self.wait_write("enable", None)
+                self.wait_write("configure terminal")
+                self.wait_write(
+                  "username %s role network-admin password %s"
+                  % (self.username, self.password)
+                )
 
-        self.wait_write(f"hostname {self.hostname}")
+            # configure mgmt interface
+            self.wait_write("interface eth0")
+            self.wait_write("ip address 10.0.0.15 255.255.255.0")
+            self.wait_write("exit")
 
-        self.wait_write("commit")
-        self.wait_write("exit")
-        self.wait_write("write memory")
+            self.wait_write(f"hostname {self.hostname}")
+
+            self.wait_write("commit")
+            self.wait_write("exit")
+            self.wait_write("write memory")
 
     def startup_config(self):
         """Load additional config provided by user."""
