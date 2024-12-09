@@ -101,6 +101,13 @@ class OCNOS_vm(vrnetlab.VM):
         self.logger.info("applying bootstrap configuration")
         self.wait_write("", None)
 
+        if self.spins > 300:
+            # too many spins with no result ->  give up
+            self.logger.info("To many spins with no result at logging in, restarting")
+            self.stop()
+            self.start()
+            return
+
         (ridx, match, res) = self.tn.expect([b"OcNOS> "], 1)
         if match:  # got a match!
             if ridx == 0:  # write config
@@ -122,6 +129,15 @@ class OCNOS_vm(vrnetlab.VM):
             self.wait_write("commit")
             self.wait_write("exit")
             self.wait_write("write memory")
+
+        # no match, if we saw executive mode from the router it's probably
+        # logging in or logging in failed, so let's give it some more time
+        if res != b"":
+            self.logger.trace("OUTPUT: %s" % res.decode())
+            # reset spins if we saw some output
+            self.spins = 0
+
+        self.spins += 1        
 
     def startup_config(self):
         """Load additional config provided by user."""
