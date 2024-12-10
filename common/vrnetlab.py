@@ -696,6 +696,18 @@ class VR:
                 else:
                     self.update_health(1, "starting")
 
+            #backdoor to trigger a system reset on all VMs via qemu-monitor
+            if os.path.exists('/reset'):
+                for vm in self.vms:
+                    try:
+                        vm.qm.write("system_reset\r".encode())
+                        self.logger.debug(f"Sent qemu-monitor system_reset to VM num {vm.num} ")
+                    except Exception as e:
+                        self.logger.debug(f"Failed to send qemu-monitor system_reset to VM num {vm.num} ({e})")
+                try:
+                    os.remove('/reset')
+                except Exception as e:
+                    self.logger.debug(f"Failed to cleanup /reset file({e}). qemu-monitor system_reset will likely be triggered again on VMs")
 
 class QemuBroken(Exception):
     """Our Qemu instance is somehow broken"""
