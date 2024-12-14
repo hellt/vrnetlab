@@ -100,23 +100,44 @@ class OCNOS_vm(vrnetlab.VM):
         """Do the actual bootstrap config"""
         self.logger.info("applying bootstrap configuration")
         self.wait_write("", None)
-        self.wait_write("enable", ">")
-        self.wait_write("configure terminal")
-        self.wait_write(
-            "username %s role network-admin password %s"
-            % (self.username, self.password)
-        )
 
-        # configure mgmt interface
-        self.wait_write("interface eth0")
-        self.wait_write("ip address 10.0.0.15 255.255.255.0")
-        self.wait_write("exit")
+        if self.spins > 300:
+            # too many spins with no result ->  give up
+            self.logger.info("To many spins with no result at logging in, restarting")
+            self.stop()
+            self.start()
+            return
 
-        self.wait_write(f"hostname {self.hostname}")
+        (ridx, match, res) = self.tn.expect([b"OcNOS> "], 1)
+        if match:  # got a match!
+            if ridx == 0:  # write config
+                self.logger.debug("matched logged in prompt")
+                self.wait_write("enable", None)
+                self.wait_write("configure terminal")
+                self.wait_write(
+                  "username %s role network-admin password %s"
+                  % (self.username, self.password)
+                )
 
-        self.wait_write("commit")
-        self.wait_write("exit")
-        self.wait_write("write memory")
+            # configure mgmt interface
+            self.wait_write("interface eth0")
+            self.wait_write("ip address 10.0.0.15 255.255.255.0")
+            self.wait_write("exit")
+
+            self.wait_write(f"hostname {self.hostname}")
+
+            self.wait_write("commit")
+            self.wait_write("exit")
+            self.wait_write("write memory")
+
+        # no match, if we saw executive mode from the router it's probably
+        # logging in or logging in failed, so let's give it some more time
+        if res != b"":
+            self.logger.trace("OUTPUT: %s" % res.decode())
+            # reset spins if we saw some output
+            self.spins = 0
+
+        self.spins += 1        
 
     def startup_config(self):
         """Load additional config provided by user."""

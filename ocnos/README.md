@@ -7,12 +7,18 @@ This is the vrnetlab docker image for IPInfusion OcNOS.
 Download the OcNOS-VM image from https://www.ipinfusion.com/products/ocnos-vm/
 Copy the qcow2 image into this folder, then run `make docker-image`.
 
-Tested booting and responding to SSH:
+Tested booting and responding to Telnet:
+
+- OcNOS-SP-PLUS-x86-6.5.2-101-GA.qcow2 MD5:796c121be77d43ffffbf6214a44f54eb
+
+Tested booting and responding to SSH:  
+(The relevant parts of the Makefile for this version are commented out.)
 
 - DEMO_VM-OcNOS-6.0.2.11-MPLS-x86-MR.qcow2 MD5:08bbaf99347c33f75d15f552bda762e1
 
 ## Serial console issues
 
+(This issue did not occur in version 6.5.2-101.)  
 The image of OcNOS version 6.0.2.11 distributed from the official website has a bug that prevents connection via serial console.
 This problem can be corrected by modifying /boot/grub/grub.cfg in the image.
 
