@@ -16,11 +16,13 @@ docker tag vrnetlab/vr-aoscx:20210610000730 vrnetlab/vr-aoscx:10.07.0010
 Tested booting and responding to SSH:
 
 * `ArubaOS-CX_10_12_0006.ova` (`arubaoscx-disk-image-genericx86-p4-20230531220439.vmdk`)
+* `ArubaOS-CX_10_13_0005.ova` (`arubaoscx-disk-image-genericx86-p4-20231110145644.vmdk`)
+* `ArubaOS-CX_10_14_1000.ova` (`arubaoscx-disk-image-genericx86-p4-20240731173624.vmdk`)
 
 ## System requirements
 
-CPU: 2 core
+CPU: 4 core
 
-RAM: 4GB
+RAM: 8GB
 
 Disk: <1GB

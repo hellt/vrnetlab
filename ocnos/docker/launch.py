@@ -70,6 +70,7 @@ class OCNOS_vm(vrnetlab.VM):
             if ridx == 0:  # login
                 self.logger.debug("matched login prompt")
                 self.logger.debug("trying to log in with 'ocnos'")
+                time.sleep(15)
                 self.wait_write("ocnos", wait=None)
                 self.wait_write("ocnos", wait="Password:")
 

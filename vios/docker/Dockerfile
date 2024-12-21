@@ -1,18 +1,4 @@
-FROM public.ecr.aws/docker/library/debian:bookworm-slim
-LABEL org.opencontainers.image.authors="xtothj@gmail.com"
-
-ARG DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update -qy \
-   && apt-get install -y --no-install-recommends \
-   bridge-utils \
-   iproute2 \
-   python3 \
-   socat \
-   qemu-kvm \
-   qemu-utils \
-   tcpdump \
-   && rm -rf /var/lib/apt/lists/*
+FROM ghcr.io/srl-labs/vrnetlab-base:0.0.1
 
 ARG IMAGE
 COPY $IMAGE* /

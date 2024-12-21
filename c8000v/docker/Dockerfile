@@ -1,20 +1,4 @@
-FROM public.ecr.aws/docker/library/debian:bookworm-slim
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update -qy \
- && apt-get install -y \
-    bridge-utils \
-    iproute2 \
-    socat \
-    qemu-kvm \
-    tcpdump \
-    inetutils-ping \
-    ssh \
-    telnet \
-    procps \
-    genisoimage \
- && rm -rf /var/lib/apt/lists/*
+FROM ghcr.io/srl-labs/vrnetlab-base:0.0.1
 
 ARG VERSION
 ENV VERSION=${VERSION}

@@ -9,9 +9,10 @@ import subprocess
 import sys
 
 import vrnetlab
+from scrapli.driver.core import IOSXEDriver
 
 STARTUP_CONFIG_FILE = "/config/startup-config.cfg"
-
+DEFAULT_SCRAPLI_TIMEOUT = 900
 
 def handle_SIGCHLD(signal, frame):
     os.waitpid(-1, os.WNOHANG)
@@ -44,13 +45,6 @@ class cat9kv_vm(vrnetlab.VM):
         for e in sorted(os.listdir("/")):
             if not disk_image and re.search(".qcow2$", e):
                 disk_image = "/" + e
-            if re.search(r"\.license$", e):
-                os.rename("/" + e, "/tftpboot/license.lic")
-
-        self.license = False
-        if os.path.isfile("/tftpboot/license.lic"):
-            logger.info("License found")
-            self.license = True
 
         super().__init__(
             username,
@@ -59,6 +53,7 @@ class cat9kv_vm(vrnetlab.VM):
             smp=f"cores={vcpu},threads=1,sockets=1",
             ram=ram,
             min_dp_nics=8,
+            use_scrapli=True
         )
         self.hostname = hostname
         self.conn_mode = conn_mode
@@ -91,9 +86,46 @@ class cat9kv_vm(vrnetlab.VM):
         except:
             self.logger.debug("No vswitch.xml file provided.")
 
+        v4_mgmt_address = vrnetlab.cidr_to_ddn(self.mgmt_address_ipv4)
+                
+        cat9kv_config = f"""hostname {self.hostname}
+username {self.username} privilege 15 password {self.password}
+ip domain name example.com
+no ip domain lookup
+!
+crypto key generate rsa modulus 2048
+!
+line con 0
+logging synchronous
+!
+line vty 0 4
+logging synchronous
+login local
+transport input all
+!
+ipv6 unicast-routing
+!
+ip route vrf Mgmt-vrf 0.0.0.0 0.0.0.0 {self.mgmt_gw_ipv4}
+ipv6 route vrf Mgmt-vrf ::/0 {self.mgmt_gw_ipv6}
+!
+interface GigabitEthernet0/0
+description Containerlab management interface
+ip address {v4_mgmt_address[0]} {v4_mgmt_address[1]}
+ipv6 address {self.mgmt_address_ipv6}
+no shut
+exit
+!
+restconf
+netconf-yang
+netconf max-sessions 16
+netconf detailed-error
+!
+ip ssh server algorithm mac hmac-sha2-512
+!
+"""
+
         with open("/img_dir/iosxe_config.txt", "w") as cfg_file:
-            cfg_file.write(f"hostname {self.hostname}\r\n")
-            cfg_file.write("end\r\n")
+            cfg_file.write(cat9kv_config)
 
         genisoimage_args = [
             "genisoimage",
@@ -115,25 +147,25 @@ class cat9kv_vm(vrnetlab.VM):
             self.start()
             return
 
-        (ridx, match, res) = self.tn.expect(
+        (ridx, match, res) = self.con_expect(
             [
                 b"Press RETURN to get started!",
                 b"IOSXEBOOT-4-FACTORY_RESET",
             ],
-            1,
         )
         if match:  # got a match!
             if ridx == 0:  # login
                 self.logger.debug("matched, Press RETURN to get started.")
-
-                self.wait_write("", wait=None)
-
-                # run main config!
-                self.bootstrap_config()
-                # add startup config if present
-                self.startup_config()
+                
+                if os.path.exists(STARTUP_CONFIG_FILE):
+                    self.logger.info("Startup configuration file found. Applying startup config.")
+                    self.wait_write("", wait=None)
+                    self.apply_startup_config()
+                else:
+                    self.logger.warning(f"User provided startup configuration is not found.")
+                
                 # close telnet connection
-                self.tn.close()
+                self.scrapli_tn.close()
                 # startup time?
                 startup_time = datetime.datetime.now() - self.start_time
                 self.logger.info("Startup complete in: %s", startup_time)
@@ -146,7 +178,7 @@ class cat9kv_vm(vrnetlab.VM):
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
         if res != b"":
-            self.logger.trace("OUTPUT: %s", res.decode())
+            self.write_to_stdout(res)
             # reset spins if we saw some output
             self.spins = 0
 
@@ -154,78 +186,30 @@ class cat9kv_vm(vrnetlab.VM):
 
         return
 
-    def bootstrap_config(self):
-        """Do the actual bootstrap config"""
-        self.logger.info("applying bootstrap configuration")
+    def apply_startup_config(self):  
         
-        v4_mgmt_address = vrnetlab.cidr_to_ddn(self.mgmt_address_ipv4)
-
-        self.wait_write("", None)
-        self.wait_write("enable", wait=">")
-        self.wait_write("configure terminal", wait=">")
-
-        self.wait_write(f"hostname {self.hostname}")
-        self.wait_write(
-            "username %s privilege 15 password %s" % (self.username, self.password)
-        )
-        if int(self.version.split(".")[0]) >= 16:
-            self.wait_write("ip domain name example.com")
-        else:
-            self.wait_write("ip domain-name example.com")
-        self.wait_write("crypto key generate rsa modulus 2048")
-
-        self.wait_write("no ip domain lookup")
+        scrapli_timeout = os.getenv("SCRAPLI_TIMEOUT", DEFAULT_SCRAPLI_TIMEOUT)
+        self.logger.info(f"Scrapli timeout is {scrapli_timeout}s (default {DEFAULT_SCRAPLI_TIMEOUT}s)")
         
-        self.wait_write("ipv6 unicast-routing")
+        # init scrapli
+        cat9kv_scrapli_dev = {
+            "host": "127.0.0.1",
+            "auth_bypass": True,
+            "auth_strict_key": False,
+            "timeout_socket": scrapli_timeout,
+            "timeout_transport": scrapli_timeout,
+            "timeout_ops": scrapli_timeout,
+        }
 
-        # add mgmt vrf static route
-        self.wait_write(f"ip route vrf clab-mgmt 0.0.0.0 0.0.0.0 {self.mgmt_gw_ipv4}")
-        self.wait_write(f"ipv6 route vrf clab-mgmt ::/0 {self.mgmt_gw_ipv6}")
-
-        self.wait_write("interface GigabitEthernet0/0")
-        self.wait_write(f"ip address {v4_mgmt_address[0]} {v4_mgmt_address[1]}")
-        self.wait_write(f"ipv6 address {self.mgmt_address_ipv6}")
-        self.wait_write("no shut")
-        self.wait_write("exit")
-
-        self.wait_write("restconf")
-        self.wait_write("netconf-yang")
-        self.wait_write("netconf max-sessions 16")
-        # I did not find any documentation about this, but is seems like a good idea!?
-        self.wait_write("netconf detailed-error")
-        self.wait_write("ip ssh server algorithm mac hmac-sha2-512")
-        self.wait_write("ip ssh maxstartups 128")
-
-        self.wait_write("line vty 0 4")
-        self.wait_write("login local")
-        self.wait_write("transport input all")
-        self.wait_write("end")
-        self.wait_write("copy running-config startup-config")
-        self.wait_write("\r", "Destination")
-
-    def startup_config(self):
-        """Load additional config provided by user."""
-
-        if not os.path.exists(STARTUP_CONFIG_FILE):
-            self.logger.trace(f"Startup config file {STARTUP_CONFIG_FILE} is not found")
-            return
-
-        self.logger.trace(f"Startup config file {STARTUP_CONFIG_FILE} exists")
-        with open(STARTUP_CONFIG_FILE) as file:
-            config_lines = file.readlines()
-            config_lines = [line.rstrip() for line in config_lines]
-            self.logger.trace(f"Parsed startup config file {STARTUP_CONFIG_FILE}")
-
-        self.logger.info(f"Writing lines from {STARTUP_CONFIG_FILE}")
-
-        self.wait_write("configure terminal")
-        # Apply lines from file
-        for line in config_lines:
-            self.wait_write(line)
-        # End and Save
-        self.wait_write("end")
-        self.wait_write("copy running-config startup-config")
-        self.wait_write("\r", "Destination")
+        con = IOSXEDriver(**cat9kv_scrapli_dev)
+        con.commandeer(conn=self.scrapli_tn)
+        
+        res = con.send_configs_from_file(STARTUP_CONFIG_FILE)
+        res += con.send_commands(["write memory"])
+    
+        for response in res:
+            self.logger.info(f"CONFIG:{response.channel_input}")
+            self.logger.info(f"RESULT:{response.result}")
 
 
 class cat9kv(vrnetlab.VR):

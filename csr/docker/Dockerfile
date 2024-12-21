@@ -1,24 +1,4 @@
-FROM public.ecr.aws/docker/library/debian:bookworm-slim
-MAINTAINER Kristian Larsson <kristian@spritelink.net>
-MAINTAINER Denis Pointer <git@dpnet.ca>
-
-ARG DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update -qy \
- && apt-get upgrade -qy \
- && apt-get install -y \
-    bridge-utils \
-    iproute2 \
-    python3-ipy \
-    socat \
-    qemu-kvm \
-    tcpdump \
-    ssh \ 
-    inetutils-ping \
-    dnsutils \
-    telnet \
-    genisoimage \
- && rm -rf /var/lib/apt/lists/*
+FROM ghcr.io/srl-labs/vrnetlab-base:0.0.1
 
 ARG VERSION
 ENV VERSION=${VERSION}

@@ -9,9 +9,10 @@ import sys
 import time
 
 import vrnetlab
+from scrapli.driver.core import NXOSDriver
 
 STARTUP_CONFIG_FILE = "/config/startup-config.cfg"
-
+DEFAULT_SCRAPLI_TIMEOUT = 900
 
 def handle_SIGCHLD(signal, frame):
     os.waitpid(-1, os.WNOHANG)
@@ -49,7 +50,7 @@ class N9KV_vm(vrnetlab.VM):
             exit(1)
         super(N9KV_vm, self).__init__(
             username, password, disk_image=disk_image, ram=10240,
-            smp=4, cpu="host,level=9"
+            smp=4, cpu="host,level=9", use_scrapli=True
         )
         self.hostname = hostname
         self.conn_mode = conn_mode
@@ -88,7 +89,7 @@ class N9KV_vm(vrnetlab.VM):
             self.start()
             return
 
-        (ridx, match, res) = self.tn.expect([b"\(yes\/skip\/no\)\[no\]:",b"\(yes\/no\)\[n\]:", b"\(yes\/no\)\[no\]:", b"login:"], 1)
+        (ridx, match, res) = self.con_expect([b"\(yes\/skip\/no\)\[no\]:",b"\(yes\/no\)\[n\]:", b"\(yes\/no\)\[no\]:", b"login:"])
         if match:  # got a match!
             if ridx in (0, 1, 2):
                 self.logger.debug("matched poap prompt")
@@ -108,10 +109,9 @@ class N9KV_vm(vrnetlab.VM):
                 self.wait_write(self.password, wait="Password:")
 
                 # run main config!
-                self.bootstrap_config()
-                self.startup_config()
+                self.apply_config()
                 # close telnet connection
-                self.tn.close()
+                self.scrapli_tn.close()
                 # startup time?
                 startup_time = datetime.datetime.now() - self.start_time
                 self.logger.info("Startup complete in: %s" % startup_time)
@@ -122,7 +122,7 @@ class N9KV_vm(vrnetlab.VM):
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
         if res != b"":
-            self.logger.trace("OUTPUT: %s" % res.decode())
+            self.write_to_stdout(res)
             # reset spins if we saw some output
             self.spins = 0
 
@@ -130,64 +130,61 @@ class N9KV_vm(vrnetlab.VM):
 
         return
 
-    def bootstrap_config(self):
-        """Do the actual bootstrap config"""
-        self.logger.info("applying bootstrap configuration")
-        self.wait_write("", None)
-        self.wait_write("configure")
-        self.wait_write(f"hostname {self.hostname}")
-        self.wait_write(
-            f"username {self.username} password 0 {self.password} role network-admin"
-        )
+    def apply_config(self):  
         
-        # configure management vrf
-        self.wait_write("vrf context management")
-        self.wait_write(f"ip route 0.0.0.0/0 {self.mgmt_gw_ipv4}")
-        self.wait_write(f"ipv6 route ::/0 {self.mgmt_gw_ipv6}")
-        self.wait_write("exit")
-
-        # configure mgmt interface
-        self.wait_write("interface mgmt0")
-        self.wait_write(f"ip address {self.mgmt_address_ipv4}")
-        self.wait_write(f"ipv6 address {self.mgmt_address_ipv6}")
-        self.wait_write("exit")
+        scrapli_timeout = os.getenv("SCRAPLI_TIMEOUT", DEFAULT_SCRAPLI_TIMEOUT)
+        self.logger.info(f"Scrapli timeout is {scrapli_timeout}s (default {DEFAULT_SCRAPLI_TIMEOUT}s)")
         
-        # configure longer ssh keys
-        self.wait_write("ssh key rsa 2048 force")
-        self.wait_write("feature ssh")
+        # init scrapli
+        n9kv_scrapli_dev = {
+            "host": "127.0.0.1",
+            "auth_bypass": True,
+            "auth_strict_key": False,
+            "timeout_socket": scrapli_timeout,
+            "timeout_transport": scrapli_timeout,
+            "timeout_ops": scrapli_timeout,
+        }
+                        
+        n9kv_config = f"""hostname {self.hostname}
+username {self.username} password 0 {self.password} role network-admin
+!
+vrf context management
+ip route 0.0.0.0/0 {self.mgmt_gw_ipv4}
+ipv6 route ::/0 {self.mgmt_gw_ipv6}
+exit
+!
+interface mgmt0
+ip address {self.mgmt_address_ipv4}
+ipv6 address {self.mgmt_address_ipv6}
+exit
+!
+ssh key rsa 2048 force
+feature ssh
+!
+feature scp-server
+feature nxapi
+feature telnet
+feature netconf
+feature grpc
+!
+"""
 
-        # setup nxapi/scp server
-        self.wait_write("feature scp-server")
-        self.wait_write("feature nxapi")
-        self.wait_write("feature telnet")
-        self.wait_write("feature netconf")
-        self.wait_write("feature grpc")
-        self.wait_write("exit")
-        self.wait_write("copy running-config startup-config")
-        self.wait_write("! Bootstrap Config for ContainerLab Complete.", wait="Copy complete.")
+        con = NXOSDriver(**n9kv_scrapli_dev)
+        con.commandeer(conn=self.scrapli_tn)
+        
+        if os.path.exists(STARTUP_CONFIG_FILE):
+            self.logger.info("Startup configuration file found")
+            with open(STARTUP_CONFIG_FILE, "r") as config:
+                n9kv_config += config.read()
+        else:
+            self.logger.warning(f"User provided startup configuration is not found.")
 
-    def startup_config(self):
-        """Load additional config provided by user."""
-
-        if not os.path.exists(STARTUP_CONFIG_FILE):
-            self.logger.trace(f"Startup config file {STARTUP_CONFIG_FILE} is not found")
-            return
-
-        self.logger.trace(f"Startup config file {STARTUP_CONFIG_FILE} exists")
-        with open(STARTUP_CONFIG_FILE) as file:
-            config_lines = file.readlines()
-            config_lines = [line.rstrip() for line in config_lines]
-            self.logger.trace(f"Parsed startup config file {STARTUP_CONFIG_FILE}")
-
-        self.logger.info(f"Writing lines from {STARTUP_CONFIG_FILE}")
-
-        self.wait_write("configure terminal")
-        # Apply lines from file
-        for line in config_lines:
-            self.wait_write(line)
-        # End and Save
-        self.wait_write("end")
-        self.wait_write("copy running-config startup-config")
+        res = con.send_configs(n9kv_config.splitlines())
+        con.send_config("copy running-config startup-config")
+    
+        for response in res:
+            self.logger.info(f"CONFIG:{response.channel_input}")
+            self.logger.info(f"RESULT:{response.result}")
 
 
 class N9KV(vrnetlab.VR):
@@ -221,7 +218,6 @@ if __name__ == "__main__":
     if args.trace:
         logger.setLevel(1)
 
-    logger.debug(f"Environment variables: {os.environ}")
     vrnetlab.boot_delay()
 
     vr = N9KV(args.hostname, args.username, args.password, args.connection_mode)
