@@ -9,9 +9,10 @@ import sys
 import time
 
 import vrnetlab
+from scrapli.driver.core import NXOSDriver
 
 STARTUP_CONFIG_FILE = "/config/startup-config.cfg"
-
+DEFAULT_SCRAPLI_TIMEOUT = 900
 
 def handle_SIGCHLD(signal, frame):
     os.waitpid(-1, os.WNOHANG)
@@ -44,7 +45,7 @@ class NXOS_vm(vrnetlab.VM):
             if re.search(".qcow2$", e):
                 disk_image = "/" + e
         super(NXOS_vm, self).__init__(
-            username, password, disk_image=disk_image, ram=4096, smp="2"
+            username, password, disk_image=disk_image, ram=4096, smp="2", use_scrapli=True
         )
         self.credentials = [["admin", "admin"]]
         self.hostname = hostname
@@ -59,7 +60,7 @@ class NXOS_vm(vrnetlab.VM):
             self.start()
             return
 
-        (ridx, match, res) = self.tn.expect([b"login:"], 1)
+        (ridx, match, res) = self.con_expect([b"login:"])
         if match:  # got a match!
             if ridx == 0:  # login
                 self.logger.debug("matched login prompt")
@@ -75,10 +76,9 @@ class NXOS_vm(vrnetlab.VM):
                 self.wait_write(password, wait="Password:")
 
                 # run main config!
-                self.bootstrap_config()
-                self.startup_config()
+                self.apply_config()
                 # close telnet connection
-                self.tn.close()
+                self.scrapli_tn.close()
                 # startup time?
                 startup_time = datetime.datetime.now() - self.start_time
                 self.logger.info("Startup complete in: %s" % startup_time)
@@ -89,7 +89,7 @@ class NXOS_vm(vrnetlab.VM):
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
         if res != b"":
-            self.logger.trace("OUTPUT: %s" % res.decode())
+            self.write_to_stdout(res)
             # reset spins if we saw some output
             self.spins = 0
 
@@ -97,59 +97,56 @@ class NXOS_vm(vrnetlab.VM):
 
         return
 
-    def bootstrap_config(self):
-        """Do the actual bootstrap config"""
-        self.logger.info("applying bootstrap configuration")
-        self.wait_write("", None)
-        self.wait_write("configure")
-        self.wait_write(
-            "username %s password 0 %s role network-admin"
-            % (self.username, self.password)
-        )
-        self.wait_write("hostname %s" % (self.hostname))
-
-        # configure management vrf
-        self.wait_write("vrf context management")
-        self.wait_write(f"ip route 0.0.0.0/0 {self.mgmt_gw_ipv4}")
-        self.wait_write(f"ipv6 route ::/0 {self.mgmt_gw_ipv6}")
-        self.wait_write("exit")
-
-        # configure mgmt interface
-        self.wait_write("interface mgmt0")
-        self.wait_write(f"ip address {self.mgmt_address_ipv4}")
-        self.wait_write(f"ipv6 address {self.mgmt_address_ipv6}")
-        self.wait_write("exit")
+    def apply_config(self):  
         
-        # configure longer ssh keys
-        self.wait_write("no feature ssh")
-        self.wait_write("ssh key rsa 2048 force")
-        self.wait_write("feature ssh")
+        scrapli_timeout = os.getenv("SCRAPLI_TIMEOUT", DEFAULT_SCRAPLI_TIMEOUT)
+        self.logger.info(f"Scrapli timeout is {scrapli_timeout}s (default {DEFAULT_SCRAPLI_TIMEOUT}s)")
         
-        self.wait_write("exit")
-        self.wait_write("copy running-config startup-config")
+        # init scrapli
+        nxos_scrapli_dev = {
+            "host": "127.0.0.1",
+            "auth_bypass": True,
+            "auth_strict_key": False,
+            "timeout_socket": scrapli_timeout,
+            "timeout_transport": scrapli_timeout,
+            "timeout_ops": scrapli_timeout,
+        }
+                        
+        nxos_config = f"""hostname {self.hostname}
+username {self.username} password 0 {self.password} role network-admin
+!
+vrf context management
+ip route 0.0.0.0/0 {self.mgmt_gw_ipv4}
+ipv6 route ::/0 {self.mgmt_gw_ipv6}
+exit
+!
+interface mgmt0
+ip address {self.mgmt_address_ipv4}
+ipv6 address {self.mgmt_address_ipv6}
+exit
+!
+no feature ssh
+ssh key rsa 2048 force
+feature ssh
+!
+"""
 
-    def startup_config(self):
-        """Load additional config provided by user."""
+        con = NXOSDriver(**nxos_scrapli_dev)
+        con.commandeer(conn=self.scrapli_tn)
+        
+        if os.path.exists(STARTUP_CONFIG_FILE):
+            self.logger.info("Startup configuration file found")
+            with open(STARTUP_CONFIG_FILE, "r") as config:
+                nxos_config += config.read()
+        else:
+            self.logger.warning(f"User provided startup configuration is not found.")
 
-        if not os.path.exists(STARTUP_CONFIG_FILE):
-            self.logger.trace(f"Startup config file {STARTUP_CONFIG_FILE} is not found")
-            return
-
-        self.logger.trace(f"Startup config file {STARTUP_CONFIG_FILE} exists")
-        with open(STARTUP_CONFIG_FILE) as file:
-            config_lines = file.readlines()
-            config_lines = [line.rstrip() for line in config_lines]
-            self.logger.trace(f"Parsed startup config file {STARTUP_CONFIG_FILE}")
-
-        self.logger.info(f"Writing lines from {STARTUP_CONFIG_FILE}")
-
-        self.wait_write("configure terminal")
-        # Apply lines from file
-        for line in config_lines:
-            self.wait_write(line)
-        # End and Save
-        self.wait_write("end")
-        self.wait_write("copy running-config startup-config")
+        res = con.send_configs(nxos_config.splitlines())
+        con.send_config("copy running-config startup-config")
+    
+        for response in res:
+            self.logger.info(f"CONFIG:{response.channel_input}")
+            self.logger.info(f"RESULT:{response.result}")
 
 
 class NXOS(vrnetlab.VR):

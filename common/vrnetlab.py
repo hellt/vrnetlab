@@ -12,8 +12,21 @@ import subprocess
 import telnetlib
 import time
 from pathlib import Path
+import sys
+
+try:
+    from scrapli import Driver
+except ImportError:
+    pass
 
 MAX_RETRIES = 60
+
+# set fancy logging colours
+logging.addLevelName( logging.INFO, f"\x1B[1;32m\t{logging.getLevelName(logging.INFO)}\x1B[0m")
+logging.addLevelName( logging.WARN, f"\x1B[1;38;5;220m\t{logging.getLevelName(logging.WARN)}\x1B[0m")
+logging.addLevelName( logging.DEBUG, f"\x1B[1;94m\t{logging.getLevelName(logging.DEBUG)}\x1B[0m")
+logging.addLevelName( logging.ERROR, f"\x1B[1;91m\t{logging.getLevelName(logging.ERROR)}\x1B[0m")
+logging.addLevelName( logging.CRITICAL, f"\x1B[1;91m\t{logging.getLevelName(logging.CRITICAL)}\x1B[0m")
 
 
 def gen_mac(last_octet=None):
@@ -80,8 +93,52 @@ class VM:
         smp="1",
         mgmt_passthrough=False,
         min_dp_nics=0,
+        use_scrapli=False,
     ):
+        
+        self.use_scrapli = use_scrapli
+        
+        # configure logging
         self.logger = logging.getLogger()
+        
+        """
+        Configure Scrapli logger to only be INFO level.
+        Scrapli uses 'scrapli' logger by default, and
+        will write all channel i/o as DEBUG log level.
+        """
+        self.scrapli_logger = logging.getLogger("scrapli")
+        self.scrapli_logger.setLevel(logging.INFO)
+        
+        # configure scrapli
+        if self.use_scrapli:
+            # init scrapli -- main telnet device
+            scrapli_tn_dev = {
+                "host": "127.0.0.1",
+                "port": 5000 + num,
+                "auth_bypass": True,
+                "auth_strict_key": False,
+                "transport": "telnet",
+                "timeout_socket": 3600,
+                "timeout_transport": 3600,
+                "timeout_ops": 3600,
+            }
+            
+            self.scrapli_tn = Driver(**scrapli_tn_dev)
+            
+            # init scrapli -- qemu monitor device
+            scrapli_qm_dev = {
+                "host": "127.0.0.1",
+                "port": 4000 + num,
+                "auth_bypass": True,
+                "auth_strict_key": False,
+                "transport": "telnet",
+                "timeout_socket": 3600,
+                "timeout_transport": 3600,
+                "timeout_ops": 3600,
+            }
+            
+            self.scrapli_qm = Driver(**scrapli_qm_dev)
+
 
         # username / password to configure
         self.username = username
@@ -170,6 +227,7 @@ class VM:
             overlay_disk_image = ".".join(tokens)
 
         if not os.path.exists(overlay_disk_image):
+            self.logger.debug(f"class: {self.__class__.__name__}, disk_image: {disk_image}, overlay: {overlay_disk_image}")
             self.logger.debug("Creating overlay disk image")
             run_command(
                 [
@@ -214,7 +272,21 @@ class VM:
             self.qemu_args.insert(1, "-enable-kvm")
 
     def start(self):
-        self.logger.info("Starting %s" % self.__class__.__name__)
+        # self.logger.info("Starting %s" % self.__class__.__name__)
+        self.logger.info("START ENVIRONMENT VARIABLES".center(60, "-"))
+        for var, value in sorted(os.environ.items()):
+            self.logger.info(f"{var}: {value}")
+        self.logger.info("END ENVIRONMENT VARIABLES".center(60, "-"))
+
+        self.logger.info(f"Launching {self.__class__.__name__} with {self.smp} SMP/VCPU and {self.ram} M of RAM")
+        
+        # give nice colours. Red if disabled, Green if enabled
+        mgmt_passthrough_coloured = format_bool_color(self.mgmt_passthrough, "Enabled", "Disabled")
+        use_scrapli_coloured = format_bool_color(self.use_scrapli, "Enabled", "Disabled")
+
+        self.logger.info(f"Scrapli: {use_scrapli_coloured}")
+        self.logger.info(f"Transparent mgmt interface: {mgmt_passthrough_coloured}")
+
         self.start_time = datetime.datetime.now()
 
         cmd = list(self.qemu_args)
@@ -263,10 +335,13 @@ class VM:
             self.logger.info("STDERR: %s" % errs)
         except:
             pass
-
+        
         for i in range(1, MAX_RETRIES + 1):
             try:
-                self.qm = telnetlib.Telnet("127.0.0.1", 4000 + self.num)
+                if self.use_scrapli:
+                    self.scrapli_qm.open()
+                else:
+                    self.qm = telnetlib.Telnet("127.0.0.1", 4000 + self.num)
                 break
             except:
                 self.logger.info(
@@ -284,7 +359,10 @@ class VM:
 
         for i in range(1, MAX_RETRIES + 1):
             try:
-                self.tn = telnetlib.Telnet("127.0.0.1", 5000 + self.num)
+                if self.use_scrapli:
+                    self.scrapli_tn.open()
+                else:
+                    self.tn = telnetlib.Telnet("127.0.0.1", 5000 + self.num)
                 break
             except:
                 self.logger.info(
@@ -649,6 +727,10 @@ class VM:
         Defaults to using self.tn as connection but this can be overridden
         by passing a telnetlib.Telnet object in the con argument.
         """
+        
+        if self.use_scrapli:
+            return self.wait_write_scrapli(cmd, wait)
+        
         con_name = "custom con"
         if con is None:
             con = self.tn
@@ -662,11 +744,11 @@ class VM:
             # use class default wait pattern if none was explicitly specified
             if wait == "__defaultpattern__":
                 wait = self.wait_pattern
-            self.logger.trace(f"waiting for '{wait}' on {con_name}")
+            self.logger.info(f"waiting for '{wait}' on {con_name}")
             res = con.read_until(wait.encode())
 
             while hold and (hold in res.decode()):
-                self.logger.trace(
+                self.logger.info(
                     f"Holding pattern '{hold}' detected: {res.decode()}, retrying in 10s..."
                 )
                 con.write("\r".encode())
@@ -677,13 +759,114 @@ class VM:
                 (con.read_very_eager()) if clean_buffer else None
             )  # Clear any remaining characters in buffer
 
-            self.logger.trace(f"read from {con_name}: '{res.decode()}'")
+            self.logger.info(f"read from {con_name}: '{res.decode()}'")
             # log the cleaned buffer if it's not empty
             if cleaned_buf:
-                self.logger.trace(f"cleaned buffer: '{cleaned_buf.decode()}'")
+                self.logger.info(f"cleaned buffer: '{cleaned_buf.decode()}'")
 
         self.logger.debug(f"writing to {con_name}: '{cmd}'")
         con.write("{}\r".format(cmd).encode())
+    
+    def wait_write_scrapli(self, cmd, wait="__defaultpattern__"):
+        """
+        Wait for something on the serial port and then send command using Scrapli telnet channel
+        
+        Arguments are:
+        - cmd: command to send (string)
+        - wait: prompt to wait for before sending command, defaults to # (string)
+        """
+        if wait:
+            # use class default wait pattern if none was explicitly specified
+            if wait == "__defaultpattern__":
+                wait = self.wait_pattern
+    
+            self.logger.info(f"Waiting on console for: '{wait}'")
+            
+            self.con_read_until(wait)
+
+        time.sleep(0.1) # don't write to the console too fast
+        
+        self.write_to_stdout(b"\n")
+        
+        self.logger.info(f"Writing to console: '{cmd}'")
+        self.scrapli_tn.channel.write(f"{cmd}\r")
+    
+    def con_expect(self, regex_list, timeout=None):
+        """
+        Implements telnetlib expect() functionality, for usage with scrapli driver.
+        Wait for something on the console.
+        
+        Takes list of byte strings and an optional timeout (block) time (float) as arguments.
+
+        Returns tuple of:
+        - index of matched object from regex.
+        - match object.
+        - buffer of cosole read until match, or function exit.
+        """
+        
+        buf = b""
+        
+        if timeout:
+            t_end = time.time() + timeout
+            while time.time() < t_end:
+                buf += self.scrapli_tn.channel.read()
+        else:
+            buf = self.scrapli_tn.channel.read()
+        
+        for i, obj in enumerate(regex_list):
+            match = re.search(obj.decode(), buf.decode())
+            if match:
+                return i, match, buf
+        
+        return -1, None, buf
+
+    def con_read_until(self, match_str, timeout=None):
+        """
+        Implements telnetlib read_until() functionality, for usage with scrapli driver.
+        
+        Read until a given string is encountered or until timeout.
+
+        When no match is found, return whatever is available instead,
+        possibly the empty string.
+        
+        Arguments:
+        - match_str: string to match on (string)
+        - timeout: timeout in seconds, defaults to None (float)
+        """
+        buf = b""
+        
+        if timeout:
+            t_end = time.time() + timeout
+        
+        while True:
+            current_buf = self.scrapli_tn.channel.read()
+            buf += current_buf
+            
+            match = re.search(match_str, current_buf.decode())
+
+            # for reliability purposes, doublecheck the entire buffer 
+            # maybe the current buffer only has partial output
+            if match is None:
+                match = re.search(match_str, buf.decode())
+            
+            self.write_to_stdout(current_buf)
+            
+            if match:
+                break
+            if timeout and time.time() > t_end:
+                break
+        
+        return buf
+    
+    def write_to_stdout(self, bytes):
+        """
+        Quick and dirty way to write to stdout (docker logs) instead of 
+        using the python logger which poorly formats the output.
+        
+        Mainly for printing console to docker logs
+        """
+        sys.stdout.buffer.write(bytes)
+        sys.stdout.buffer.flush()
 
     def work(self):
         self.check_qemu()
@@ -825,6 +1008,27 @@ class VR:
                 else:
                     self.update_health(1, "starting")
 
+            #file-based signalling backdoor to trigger a system reset (via qemu-monitor) on all or specific VMs.
+            #if file is empty: reset whole VR (all VMs)
+            #if file is non-empty: reset only specified VMs (comma separated list)
+            if os.path.exists('/reset'):
+                with open('/reset','rt') as f:
+                    fcontent=f.read().strip()
+                vm_num_list=fcontent.split(',')
+                for vm in self.vms:
+                    if (str(vm.num) in vm_num_list) or not fcontent:
+                        try:
+                            if vm.use_scrapli:
+                                vm.scrapli_qm.channel.write("system_reset\r")
+                            else:
+                                vm.qm.write("system_reset\r".encode())
+                            self.logger.debug(f"Sent qemu-monitor system_reset to VM num {vm.num} ")
+                        except Exception as e:
+                            self.logger.error(f"Failed to send qemu-monitor system_reset to VM num {vm.num} ({e})")
+                try:
+                    os.remove('/reset')
+                except Exception as e:
+                    self.logger.error(f"Failed to cleanup /reset file({e}). qemu-monitor system_reset will likely be triggered again on VMs")
 
 class QemuBroken(Exception):
     """Our Qemu instance is somehow broken"""
@@ -852,3 +1056,14 @@ def cidr_to_ddn(prefix: str) -> list[str]:
 
     network = ipaddress.IPv4Interface(prefix)
     return [str(network.ip), str(network.netmask)]
+
+def format_bool_color(bool_var: bool, text_if_true: str, text_if_false: str) -> str:
+    """
+    Generate a ANSI escape code colored string based on a boolean.
+    
+    Args:
+    bool_var:       Boolean to be evaluated
+    text_if_true:   Text returned if bool_var is true -- ANSI Formatted in green color
+    text_if_false:  Text returned if bool_var is false -- ANSI Formatted in red color
+    """
+    return f"\x1B[32m{text_if_true}\x1B[0m" if bool_var else f"\x1B[31m{text_if_false}\x1B[0m"
