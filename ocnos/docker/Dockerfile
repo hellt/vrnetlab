@@ -1,22 +1,14 @@
-FROM ubuntu:20.04
+FROM public.ecr.aws/docker/library/debian:bookworm-slim
 
-ARG DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update -qy \
-   && apt-get upgrade -qy \
-   && apt-get install -y \
-   bridge-utils \
+   && apt-get install --no-install-recommends -y \
    iproute2 \
-   python3-ipy \
+   python3 \
    socat \
    qemu-kvm \
-   tcpdump \
-   tftpd-hpa \
-   ssh \
-   inetutils-ping \
-   dnsutils \
-   openvswitch-switch \
-   iptables \
-   nftables \
+   qemu-utils \
    telnet \
    && rm -rf /var/lib/apt/lists/*
 
