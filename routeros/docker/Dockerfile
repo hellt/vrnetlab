@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 LABEL org.opencontainers.image.authors="roman@dodin.dev"
 
 ARG DEBIAN_FRONTEND=noninteractive
