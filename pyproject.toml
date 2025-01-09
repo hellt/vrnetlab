@@ -1,0 +1,7 @@
+[project]
+name = "vrnetlab"
+version = "0.1.0"
+description = "vrnetlab fork for Containerlab integration"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []

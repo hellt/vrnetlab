@@ -47,15 +47,15 @@ def getMem(vmMode: str, ram: int) -> int:
     if vmMode == "integrated":
         # Integrated VM can use both MEMORY and CP_MEMORY env vars
         if "MEMORY" in os.environ:
-            return 1024 * get_digits(os.getenv("MEMORY"))
+            return 1024 * vrnetlab.get_digits(os.getenv("MEMORY"))
         if "CP_MEMORY" in os.environ:
-            return 1024 * get_digits(os.getenv("CP_MEMORY"))
+            return 1024 * vrnetlab.get_digits(os.getenv("CP_MEMORY"))
     if vmMode == "cp":
         if "CP_MEMORY" in os.environ:
-            return 1024 * get_digits(os.getenv("CP_MEMORY"))
+            return 1024 * vrnetlab.get_digits(os.getenv("CP_MEMORY"))
     if vmMode == "lc":
         if "LC_MEMORY" in os.environ:
-            return 1024 * get_digits(os.getenv("LC_MEMORY"))
+            return 1024 * vrnetlab.get_digits(os.getenv("LC_MEMORY"))
     return 1024 * int(ram)
 
 

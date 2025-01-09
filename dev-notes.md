@@ -2,7 +2,9 @@
 
 ## vrnetlab module and vscode pylance
 
-since vrnetlab module is in the `common` dir the pylance extension in vscode will not be able to find the module reference in `launch.py` files. To fix this, add the following to the `settings.json` file in vscode:
+We added `.env` file in the root of the repo to add `common` dir to the python path so that the pylance extension can find the module.
+
+However, if this doesn't work for you, add the following to the `settings.json` file in vscode:
 
 ```json
 {
