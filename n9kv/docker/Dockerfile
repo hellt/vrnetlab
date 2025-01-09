@@ -8,6 +8,7 @@ RUN apt-get update -qy \
    iproute2 \
    python3-ipy \
    socat \
+   qemu-utils \
    qemu-kvm \
    tcpdump \
    tftpd-hpa \
