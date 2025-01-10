@@ -1,4 +1,4 @@
-FROM debian:bullseye
+FROM public.ecr.aws/docker/library/debian:bookworm-slim
 MAINTAINER Stefano Sasso <stesasso@gmail.com>
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -17,8 +17,8 @@ RUN apt-get update -qy \
     iptables \
     telnet \
     ftp \
-    qemu-system-x86=1:5.2+dfsg-11+deb11u2 \
-    qemu-utils=1:5.2+dfsg-11+deb11u2 \
+    qemu-system-x86 \
+    qemu-utils \
  && rm -rf /var/lib/apt/lists/*
 
 ARG IMAGE
