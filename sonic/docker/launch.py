@@ -53,7 +53,7 @@ class SONiC_vm(vrnetlab.VM):
         self.qemu_args.extend(["-smp", "2"])
         self.nic_type = "virtio-net-pci"
         self.conn_mode = conn_mode
-        self.num_nics = 10
+        self.num_nics = 96
         self.hostname = hostname
 
     def bootstrap_spin(self):
