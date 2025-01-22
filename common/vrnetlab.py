@@ -377,15 +377,15 @@ class VM:
             f.write(ifup_script)
         os.chmod("/etc/tc-tap-mgmt-ifup", 0o777)
 
-    def get_mgmt_mac(self):
+    def get_mgmt_mac(self, last_octet=0):
         """Get the MAC address for the management interface from the envvar
-           CLAB_MGMT_MAC or generate a random one using gen_mac(0).
+           `CLAB_MGMT_MAC` or generate a random one using `gen_mac(last_octet)`.
         """
         mgmt_mac_override = os.environ.get("CLAB_MGMT_MAC", "")
         if mgmt_mac_override:
             return mgmt_mac_override
         else:
-            return gen_mac(0)
+            return gen_mac(last_octet)
 
     def gen_mgmt(self):
         """Generate qemu args for the mgmt interface(s)
@@ -414,11 +414,7 @@ class VM:
 
         res = []
         res.append("-device")
-        self.mgmt_mac = (
-            "c0:00:01:00:ca:fe"
-            if getattr(self, "_static_mgmt_mac", False)
-            else self.get_mgmt_mac()
-        )
+        self.mgmt_mac = self.get_mgmt_mac()
 
         res.append(self.nic_type + f",netdev=p00,mac={self.mgmt_mac}")
         res.append("-netdev")

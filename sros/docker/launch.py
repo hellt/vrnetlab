@@ -1329,8 +1329,7 @@ class SROS_integrated(SROS_vm):
 
         res = []
 
-        mac = vrnetlab.gen_mac(0)
-        self.mgmt_mac = mac
+        self.mgmt_mac = self.get_mgmt_mac()
 
         if self.mgmt_passthrough:
             res.append("-device")
@@ -1435,8 +1434,7 @@ class SROS_cp(SROS_vm):
         """
         res = []
 
-        mac = vrnetlab.gen_mac(0)
-        self.mgmt_mac = mac
+        self.mgmt_mac = self.get_mgmt_mac()
 
         if self.mgmt_passthrough:
             res.append("-device")
