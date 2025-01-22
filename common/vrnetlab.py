@@ -79,6 +79,7 @@ class VM:
         cpu="host",
         smp="1",
         mgmt_passthrough=False,
+        mgmt_dhcp=False,
         min_dp_nics=0,
     ):
         self.logger = logging.getLogger()
@@ -120,10 +121,24 @@ class VM:
         if mgmt_passthrough_override:
             self.mgmt_passthrough = mgmt_passthrough_override.lower() == "true"
 
+        # Check if CLAB_MGMT_DHCP environment variable is set
+        self.mgmt_dhcp = mgmt_dhcp
+        mgmt_dhcp_override = os.environ.get("CLAB_MGMT_DHCP", "")
+        if mgmt_dhcp_override:
+            self.mgmt_dhcp = mgmt_dhcp_override.lower() == "true"
+
         # Populate management IP and gateway
+        # If CLAB_MGMT_DHCP environment variable is set, we assume that a DHCP client
+        # inside of the VM will take care about setting the management IP and gateway.
         if self.mgmt_passthrough:
-            self.mgmt_address_ipv4, self.mgmt_address_ipv6 = self.get_mgmt_address()
-            self.mgmt_gw_ipv4, self.mgmt_gw_ipv6 = self.get_mgmt_gw()
+            if self.mgmt_dhcp:
+                self.mgmt_address_ipv4 = "dhcp"
+                self.mgmt_address_ipv6 = "dhcp"
+                self.mgmt_gw_ipv4 = "dhcp"
+                self.mgmt_gw_ipv6 = "dhcp"
+            else:
+                self.mgmt_address_ipv4, self.mgmt_address_ipv6 = self.get_mgmt_address()
+                self.mgmt_gw_ipv4, self.mgmt_gw_ipv6 = self.get_mgmt_gw()
         else:
             self.mgmt_address_ipv4 = "10.0.0.15/24"
             self.mgmt_address_ipv6 = "2001:db8::2/64"
