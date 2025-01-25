@@ -116,16 +116,18 @@ class VM:
         # which **does not** match the eth0 interface of a container.
         # In pass-through mode the VM container uses the same IP as the container's eth0 interface and transparently forwards traffic between the two interfaces.
         # See https://github.com/hellt/vrnetlab/issues/286
-        self.mgmt_passthrough = mgmt_passthrough
-        mgmt_passthrough_override = os.environ.get("CLAB_MGMT_PASSTHROUGH", "")
-        if mgmt_passthrough_override:
-            self.mgmt_passthrough = mgmt_passthrough_override.lower() == "true"
+        self.mgmt_passthrough = (
+            os.environ.get("CLAB_MGMT_PASSTHROUGH", "").lower() == "true"
+            if os.environ.get("CLAB_MGMT_PASSTHROUGH")
+            else mgmt_passthrough
+        )
 
         # Check if CLAB_MGMT_DHCP environment variable is set
-        self.mgmt_dhcp = mgmt_dhcp
-        mgmt_dhcp_override = os.environ.get("CLAB_MGMT_DHCP", "")
-        if mgmt_dhcp_override:
-            self.mgmt_dhcp = mgmt_dhcp_override.lower() == "true"
+        self.mgmt_dhcp = (
+            os.environ.get("CLAB_MGMT_DHCP", "").lower() == "true"
+            if os.environ.get("CLAB_MGMT_DHCP")
+            else mgmt_dhcp
+        )
 
         # Populate management IP and gateway
         # If CLAB_MGMT_DHCP environment variable is set, we assume that a DHCP client
@@ -377,15 +379,11 @@ class VM:
             f.write(ifup_script)
         os.chmod("/etc/tc-tap-mgmt-ifup", 0o777)
 
-    def get_mgmt_mac(self, last_octet=0):
+    def get_mgmt_mac(self, last_octet=0) -> str:
         """Get the MAC address for the management interface from the envvar
-           `CLAB_MGMT_MAC` or generate a random one using `gen_mac(last_octet)`.
+        `CLAB_MGMT_MAC` or generate a random one using `gen_mac(last_octet)`.
         """
-        mgmt_mac_override = os.environ.get("CLAB_MGMT_MAC", "")
-        if mgmt_mac_override:
-            return mgmt_mac_override
-        else:
-            return gen_mac(last_octet)
+        return os.environ.get("CLAB_MGMT_MAC") or gen_mac(last_octet)
 
     def gen_mgmt(self):
         """Generate qemu args for the mgmt interface(s)
@@ -546,7 +544,7 @@ class VM:
 
         for i in range(0, nics):
             # dummy interface naming
-            interface_name = f"dummy{str(i+self.num_provisioned_nics)}"
+            interface_name = f"dummy{str(i + self.num_provisioned_nics)}"
 
             # PCI bus counter is to ensure pci bus index starts from 1
             # and continuing in sequence regardles the eth index
@@ -846,24 +844,31 @@ class VR:
                 else:
                     self.update_health(1, "starting")
 
-            #file-based signalling backdoor to trigger a system reset (via qemu-monitor) on all or specific VMs.
-            #if file is empty: reset whole VR (all VMs)
-            #if file is non-empty: reset only specified VMs (comma separated list)
-            if os.path.exists('/reset'):
-                with open('/reset','rt') as f:
-                    fcontent=f.read().strip()
-                vm_num_list=fcontent.split(',')
+            # file-based signalling backdoor to trigger a system reset (via qemu-monitor) on all or specific VMs.
+            # if file is empty: reset whole VR (all VMs)
+            # if file is non-empty: reset only specified VMs (comma separated list)
+            if os.path.exists("/reset"):
+                with open("/reset", "rt") as f:
+                    fcontent = f.read().strip()
+                vm_num_list = fcontent.split(",")
                 for vm in self.vms:
                     if (str(vm.num) in vm_num_list) or not fcontent:
                         try:
                             vm.qm.write("system_reset\r".encode())
-                            self.logger.debug(f"Sent qemu-monitor system_reset to VM num {vm.num} ")
+                            self.logger.debug(
+                                f"Sent qemu-monitor system_reset to VM num {vm.num} "
+                            )
                         except Exception as e:
-                            self.logger.debug(f"Failed to send qemu-monitor system_reset to VM num {vm.num} ({e})")
+                            self.logger.debug(
+                                f"Failed to send qemu-monitor system_reset to VM num {vm.num} ({e})"
+                            )
                 try:
-                    os.remove('/reset')
+                    os.remove("/reset")
                 except Exception as e:
-                    self.logger.debug(f"Failed to cleanup /reset file({e}). qemu-monitor system_reset will likely be triggered again on VMs")
+                    self.logger.debug(
+                        f"Failed to cleanup /reset file({e}). qemu-monitor system_reset will likely be triggered again on VMs"
+                    )
+
 
 class QemuBroken(Exception):
     """Our Qemu instance is somehow broken"""
