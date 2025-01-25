@@ -13,6 +13,7 @@ import vrnetlab
 
 STARTUP_CONFIG_FILE = "/config/startup-config.cfg"
 
+
 def handle_SIGCHLD(signal, frame):
     os.waitpid(-1, os.WNOHANG)
 
@@ -54,7 +55,9 @@ class CSR_vm(vrnetlab.VM):
             logger.info("License found")
             self.license = True
 
-        super(CSR_vm, self).__init__(username, password, disk_image=disk_image, use_scrapli=True)
+        super(CSR_vm, self).__init__(
+            username, password, disk_image=disk_image, use_scrapli=True
+        )
 
         self.install_mode = install_mode
         self.num_nics = nics
@@ -70,21 +73,23 @@ class CSR_vm(vrnetlab.VM):
             cfg = self.gen_bootstrap_config()
             if os.path.exists(STARTUP_CONFIG_FILE):
                 self.logger.info("Startup configuration file found")
-                with open (STARTUP_CONFIG_FILE, "r") as startup_config:
+                with open(STARTUP_CONFIG_FILE, "r") as startup_config:
                     cfg += startup_config.read()
             else:
-                self.logger.warning(f"User provided startup configuration is not found.")
+                self.logger.warning(
+                    f"User provided startup configuration is not found."
+                )
             self.create_config_image(cfg)
 
         self.qemu_args.extend(["-cdrom", "/" + self.image_name])
-        
+
     def gen_install_config(self) -> str:
         """
         Returns the configuration to load in install mode
         """
-        
+
         config = ""
-        
+
         if self.license:
             config += """do clock set 13:33:37 1 Jan 2010
 interface GigabitEthernet1
@@ -95,7 +100,7 @@ license accept end user agreement
 yes
 do license install tftp://10.0.0.2/license.lic
 """
-        
+
         config += """
 platform console serial
 do clear platform software vnic-if nvtable
@@ -109,11 +114,15 @@ do reload
         """
         Returns the system bootstrap configuration
         """
-        
+
         v4_mgmt_address = vrnetlab.cidr_to_ddn(self.mgmt_address_ipv4)
-        
-        ip_domain_name = "ip domain name example.com" if int(self.version.split('.')[0]) >= 16 else "ip domain-name example.com"
-                
+
+        ip_domain_name = (
+            "ip domain name example.com"
+            if int(self.version.split(".")[0]) >= 16
+            else "ip domain-name example.com"
+        )
+
         return f"""hostname {self.hostname}
 username {self.username} privilege 15 password {self.password}
 {ip_domain_name}
@@ -167,7 +176,7 @@ netconf-yang
             "/" + self.image_name,
             "/iosxe_config.txt",
         ]
-        
+
         self.logger.debug("Generating boot ISO")
         subprocess.Popen(genisoimage_args).wait()
 
@@ -184,7 +193,7 @@ netconf-yang
             [b"CVAC-4-CONFIG_DONE", b"Press RETURN to get started!"]
         )
         if match:  # got a match!
-            if ridx == 0 and not self.install_mode:   # configuration applied
+            if ridx == 0 and not self.install_mode:  # configuration applied
                 self.logger.info("CVAC Configuration has been applied.")
                 # close telnet connection
                 self.scrapli_tn.close()
@@ -211,10 +220,6 @@ netconf-yang
         self.spins += 1
 
         return
-
-    # Override management MAC with specific static MAC address
-    def get_mgmt_mac(self):
-        return "c0:00:01:00:ca:fe"
 
     # Override management MAC with specific static MAC address
     def get_mgmt_mac(self):
@@ -255,6 +260,7 @@ class CSR_installer(CSR):
         sleep(30)
         csr.stop()
         self.logger.info("Installation complete")
+
 
 if __name__ == "__main__":
     import argparse
