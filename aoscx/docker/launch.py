@@ -47,7 +47,7 @@ class AOSCX_vm(vrnetlab.VM):
             logging.getLogger().info("Disk image was not found")
             exit(1)
         super(AOSCX_vm, self).__init__(
-            username, password, disk_image=disk_image, ram=8192, cpu="host,level=9", smp="4"
+            username, password, disk_image=disk_image, ram=8192, cpu="host", smp="4"
         )
         self.hostname = hostname
         self.conn_mode = conn_mode

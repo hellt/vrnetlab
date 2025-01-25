@@ -6,6 +6,7 @@ import os
 import re
 import signal
 import sys
+import time
 
 import vrnetlab
 
@@ -39,21 +40,25 @@ logging.Logger.trace = trace
 
 class OCNOS_vm(vrnetlab.VM):
     def __init__(self, hostname, username, password, conn_mode):
-        disk_image = ""
+        disk_image = None
         for e in os.listdir("/"):
             if re.search(".qcow2$", e):
                 disk_image = "/" + e
-        if disk_image == "":
+        if disk_image == None:
             logging.getLogger().info("Disk image was not found")
             exit(1)
         super(OCNOS_vm, self).__init__(
-            username, password, disk_image=disk_image, ram=4096, cpu="host,level=9", smp="2,sockets=1,cores=1"
+            username,
+            password,
+            disk_image=disk_image,
+            ram=4096,
+            smp="2",
+            driveif="virtio",
         )
         self.hostname = hostname
         self.conn_mode = conn_mode
         self.num_nics = 8
         self.nic_type = "virtio-net-pci"
-
 
     def bootstrap_spin(self):
         """This function should be called periodically to do work."""
@@ -66,25 +71,26 @@ class OCNOS_vm(vrnetlab.VM):
             return
 
         (ridx, match, res) = self.tn.expect([b"OcNOS login:"], 1)
-        if match:  # got a match!
-            if ridx == 0:  # login
-                self.logger.debug("matched login prompt")
-                self.logger.debug("trying to log in with 'ocnos'")
-                time.sleep(15)
-                self.wait_write("ocnos", wait=None)
-                self.wait_write("ocnos", wait="Password:")
 
-                # run main config!
-                self.bootstrap_config()
-                self.startup_config()
-                # close telnet connection
-                self.tn.close()
-                # startup time?
-                startup_time = datetime.datetime.now() - self.start_time
-                self.logger.info("Startup complete in: %s" % startup_time)
-                # mark as running
-                self.running = True
-                return
+        if match and ridx == 0:  # got a match!
+            self.logger.debug("matched login prompt")
+            self.logger.debug("trying to log in with 'ocnos'")
+            self.wait_write("ocnos", wait=None)
+            self.wait_write("ocnos", wait="Password:")
+            # run bootstrap config!
+            self.logger.info("Running bootstrap_config()")
+            self.bootstrap_config()
+            self.startup_config()
+            # close telnet connection
+            self.tn.close()
+            # startup time?
+            startup_time = datetime.datetime.now() - self.start_time
+            self.logger.info("Startup complete in: %s" % startup_time)
+            # mark as running
+            self.running = True
+            return
+
+        time.sleep(5)
 
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
@@ -97,48 +103,38 @@ class OCNOS_vm(vrnetlab.VM):
 
         return
 
+    def bootstrap_mgmt_interface(self):
+        self.wait_write(cmd="", wait=None)
+        self.wait_write(cmd="enable", wait=">")
+        self.wait_write(cmd="configure terminal", wait="#")
+        self.wait_write(cmd="interface eth0", wait="(config)#")
+        self.wait_write(cmd="ip vrf forwarding management", wait="(config-if)#")
+        self.wait_write(cmd="commit", wait="(config-if)#")
+        self.wait_write(cmd="ip address dhcp", wait="(config-if)#")
+        self.wait_write(cmd="commit", wait="(config-if)#")
+        self.wait_write(cmd="exit", wait="(config-if)#")
+        self.wait_write(
+            cmd="ip route vrf management 0.0.0.0/0 10.0.0.2 eth0", wait="(config)#"
+        )
+        self.wait_write(cmd="commit", wait="(config)#")
+
     def bootstrap_config(self):
         """Do the actual bootstrap config"""
         self.logger.info("applying bootstrap configuration")
-        self.wait_write("", None)
+        self.bootstrap_mgmt_interface()
 
-        if self.spins > 300:
-            # too many spins with no result ->  give up
-            self.logger.info("To many spins with no result at logging in, restarting")
-            self.stop()
-            self.start()
-            return
-
-        (ridx, match, res) = self.tn.expect([b"OcNOS> "], 1)
-        if match:  # got a match!
-            if ridx == 0:  # write config
-                self.logger.debug("matched logged in prompt")
-                self.wait_write("enable", None)
-                self.wait_write("configure terminal")
-                self.wait_write(
-                  "username %s role network-admin password %s"
-                  % (self.username, self.password)
-                )
-
-            # configure mgmt interface
-            self.wait_write("interface eth0")
-            self.wait_write("ip address 10.0.0.15 255.255.255.0")
-            self.wait_write("exit")
-
-            self.wait_write(f"hostname {self.hostname}")
-
-            self.wait_write("commit")
-            self.wait_write("exit")
-            self.wait_write("write memory")
-
-        # no match, if we saw executive mode from the router it's probably
-        # logging in or logging in failed, so let's give it some more time
-        if res != b"":
-            self.logger.trace("OUTPUT: %s" % res.decode())
-            # reset spins if we saw some output
-            self.spins = 0
-
-        self.spins += 1        
+        self.wait_write(f"hostname {self.hostname}", wait="(config)#")
+        self.wait_write(
+            "username %s role network-admin password %s"
+            % (self.username, self.password),
+            wait="(config)#",
+        )
+        self.wait_write(cmd="no ip domain-lookup vrf management", wait="(config)#")
+        self.wait_write(cmd="feature netconf-ssh vrf management", wait="(config)#")
+        self.wait_write(cmd="feature netconf-tls vrf management", wait="(config)#")
+        self.wait_write("commit", wait="(config)#")
+        self.wait_write("exit", wait="(config)#")
+        self.wait_write("write memory", wait="#")
 
     def startup_config(self):
         """Load additional config provided by user."""
@@ -163,21 +159,6 @@ class OCNOS_vm(vrnetlab.VM):
         self.wait_write("commit")
         self.wait_write("end")
         self.wait_write("write memory")
-
-    def gen_mgmt(self):
-        """
-        Augment base gen_mgmt function to add gnmi and socat forwarding
-        """
-        res = []
-
-        res.append("-device")
-        res.append(self.nic_type + f",netdev=mgmt,mac={vrnetlab.gen_mac(0)}")
-
-        res.append("-netdev")
-        res.append(
-            "user,id=mgmt,net=10.0.0.0/24,tftp=/tftpboot,hostfwd=tcp::2022-10.0.0.15:22,hostfwd=tcp::2023-10.0.0.15:23,hostfwd=udp::2161-10.0.0.15:161,hostfwd=tcp::2443-10.0.0.15:443,hostfwd=tcp::2830-10.0.0.15:830"
-        )
-        return res
 
 
 class OCNOS(vrnetlab.VR):

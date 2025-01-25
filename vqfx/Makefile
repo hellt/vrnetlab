@@ -1,5 +1,5 @@
-VENDOR=Juniper
-NAME=vQFX
+VENDOR=juniper
+VR_NAME=vqfx
 IMAGE_FORMAT=qcow2
 IMAGE_GLOB=*.qcow2
 

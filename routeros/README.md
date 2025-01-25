@@ -10,6 +10,7 @@ Tested booting and responding to SSH:
  * chr-6.39.2.vmdk   MD5:eb99636e3cdbd1ea79551170c68a9a27
  * chr-6.47.9.vmdk
  * chr-7.1beta5.vmdk
+ * chr-7.16.2.vmdk
 
 
 ## System requirements
