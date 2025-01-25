@@ -73,7 +73,7 @@ class CSR_vm(vrnetlab.VM):
                 with open (STARTUP_CONFIG_FILE, "r") as startup_config:
                     cfg += startup_config.read()
             else:
-                self.logger.warning(f"User provided startup configuration is not found.")
+                self.logger.warning("User provided startup configuration is not found.")
             self.create_config_image(cfg)
 
         self.qemu_args.extend(["-cdrom", "/" + self.image_name])
@@ -211,6 +211,10 @@ netconf-yang
         self.spins += 1
 
         return
+
+    # Override management MAC with specific static MAC address
+    def get_mgmt_mac(self):
+        return "c0:00:01:00:ca:fe"
 
 
 class CSR(vrnetlab.VR):

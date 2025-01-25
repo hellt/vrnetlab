@@ -84,7 +84,7 @@ class ROS_vm(vrnetlab.VM):
         res.append("-device")
 
         res.append(
-            self.nic_type + ",netdev=br-mgmt,mac=%(mac)s" % {"mac": vrnetlab.gen_mac(0)}
+            self.nic_type + ",netdev=br-mgmt,mac=%(mac)s" % {"mac": self.get_mgmt_mac()}
         )
         res.append("-netdev")
         res.append("bridge,br=br-mgmt,id=br-mgmt" % {"i": 0})
