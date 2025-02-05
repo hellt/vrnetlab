@@ -121,12 +121,11 @@ class VJUNOSEVOLVED_vm(vrnetlab.VM):
         try:
             parsed_junos_version = float(junos_version)
         except ValueError as e:
-             self.logger.error(f"Could not parse Junos version from filename {disk_image}! Expecting '12.3R4' style versioning to be present.")
+             self.logger.error(f"Could not parse Junos version from filename {disk_image}! Expecting '12.3R4' style versioning to be present: {e}")
 
-        if parsed_junos_version is not None:
-            if parsed_junos_version >= 24.2:
-                # vJunosEvolved 24.2R1 and up require UEFI
-                self.qemu_args.extend(["-bios", "/usr/share/qemu/OVMF.fd"])           
+        if parsed_junos_version is not None and parsed_junos_version >= 24.2:
+            # vJunosEvolved 24.2R1 and up require UEFI
+            self.qemu_args.extend(["-bios", "/usr/share/qemu/OVMF.fd"])           
         
         self.conn_mode = conn_mode
 
