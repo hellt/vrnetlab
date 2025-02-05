@@ -24,6 +24,7 @@ RUN apt-get update -qy \
    git \
    dosfstools \
    genisoimage \
+   ovmf \
    && rm -rf /var/lib/apt/lists/*
 
 # copying the uv project

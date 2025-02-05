@@ -108,8 +108,26 @@ class VJUNOSEVOLVED_vm(vrnetlab.VM):
         self.smbios = [
             "type=0,vendor=Bochs,version=Bochs",
             "type=3,manufacturer=Bochs",
-            "type=1,manufacturer=Bochs,product=Bochs,serial=chassis_no=0:slot=0:type=1:assembly_id=0x0D20:platform=251:master=0:channelized=no",
         ]
+
+        # BT chipset
+        evo_model_smbios = "type=1,manufacturer=Bochs,product=Bochs,serial=chassis_no=0:slot=0:type=1:assembly_id=0x0D20:platform=251:master=0:channelized=no"
+        if "BX" in disk_image:
+            # BX chipset
+            evo_model_smbios = "type=1,manufacturer=Bochs,product=Bochs,serial=chassis_no=0:slot=0:type=1:assembly_id=0x0DA9:platform=272:master=0:channelized=no"
+        self.smbios.append(evo_model_smbios)
+
+        junos_version = str(re.search(r"(\d{2}\.\d{1})R\d{1}", disk_image).group(1))
+        try:
+            parsed_junos_version = float(junos_version)
+        except ValueError as e:
+             self.logger.error(f"Could not parse Junos version from filename {disk_image}! Expecting '12.3R4' style versioning to be present.")
+
+        if parsed_junos_version is not None:
+            if parsed_junos_version >= 24.2:
+                # vJunosEvolved 24.2R1 and up require UEFI
+                self.qemu_args.extend(["-bios", "/usr/share/qemu/OVMF.fd"])           
+        
         self.conn_mode = conn_mode
 
     def startup_config(self):
@@ -150,7 +168,7 @@ class VJUNOSEVOLVED_vm(vrnetlab.VM):
 
                 # Login
                 self.wait_write("\r", None)
-                self.wait_write("admin", wait="login:")
+                self.wait_write("admin", wait=f"{self.hostname} login:")
                 self.wait_write(self.password, wait="Password:")
                 self.wait_write("\r", None)
                 self.logger.info("Login completed")
@@ -167,7 +185,7 @@ class VJUNOSEVOLVED_vm(vrnetlab.VM):
         # no match, if we saw some output from the router it's probably
         # booting, so let's give it some more time
         if res != b"":
-            self.logger.trace("OUTPUT: %s" % res.decode())
+            self.logger.trace("OUTPUT: %s" % res.decode('utf-8', errors="ignore"))
             # reset spins if we saw some output
             self.spins = 0
 

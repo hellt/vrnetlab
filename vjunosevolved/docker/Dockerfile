@@ -1,23 +1,5 @@
-FROM public.ecr.aws/docker/library/debian:bookworm-slim
+FROM ghcr.io/srl-labs/vrnetlab-base:0.2.1
 LABEL org.opencontainers.image.authors="roman@dodin.dev,vista@birb.network"
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-RUN apt-get update -qy \
- && apt-get install --no-install-recommends -y \
-    dosfstools \
-    bridge-utils \
-    iproute2 \
-    python3 \
-    python3-passlib \
-    socat \
-    ssh \
-    qemu-kvm \
-    qemu-utils \
-    inetutils-ping \
-    dnsutils \
-    telnet \
- && rm -rf /var/lib/apt/lists/*
 
 ARG IMAGE
 COPY $IMAGE* /
@@ -30,5 +12,3 @@ COPY make-config.sh /
 COPY *.py /
 
 EXPOSE 22 161/udp 830 5000 10000-10099 57400
-HEALTHCHECK CMD ["/healthcheck.py"]
-ENTRYPOINT ["/launch.py"]
