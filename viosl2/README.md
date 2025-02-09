@@ -38,12 +38,12 @@ Tested with versions:
 
 The router supports up to 16 GigabitEthernet interfaces.
 
-- The first interface `GigaEthernet0/0` is used as the management interface (it is placed in separated VRF) and is 
+- The first interface `GigabitEthernet0/0` is used as the management interface (it is placed in separated VRF) and is 
   mapped to the docker container interface `eth0`.
-- The rest of the interfaces are numbered from `GigaEthernet0/1` and are used as data interfaces.
+- The rest of the interfaces are numbered from `GigabitEthernet0/1` and are used as data interfaces.
   They are mapped to the docker container interfaces `eth1`, `eth2`, etc.
-- The interfaces are used in groups of four, e.g. `GigaEthernet0/0` to `GigaEthernet0/3`, `GigaEthernet1/0-3` to
-  `GigaEthernet1/3`, etc.
+- The interfaces are used in groups of four, e.g. `GigabitEthernet0/0` to `GigabitEthernet0/3`, `GigabitEthernet1/0` to
+  `GigabitEthernet1/3`, etc.
 
 ## Management plane
 
