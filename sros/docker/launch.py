@@ -13,7 +13,7 @@ from typing import Dict
 import vrnetlab
 from scrapli import Scrapli
 
-DEBUG_SCRAPLI = True if os.getenv("DEBUG_SCRAPLI", "false").lower() == "true" else False
+LOG_SCRAPLI = True if os.getenv("LOG_SCRAPLI", "false").lower() == "true" else False
 
 
 def handle_SIGCHLD(signal, frame):
@@ -1237,7 +1237,7 @@ class SROS_vm(vrnetlab.VM):
         return cmds
 
     def log_scrapli_cmd_res(self, res: list):
-        if not DEBUG_SCRAPLI:
+        if not LOG_SCRAPLI:
             return
         for response in res:
             self.logger.debug(f"CHANNEL INPUT: {response.channel_input}")
