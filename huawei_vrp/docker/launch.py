@@ -174,6 +174,7 @@ class VRP_vm(vrnetlab.VM):
         self.wait_write(cmd="aaa", wait="]")
         if self.vm_type == "AR1000V":
             self.wait_write(cmd="undo user-password complexity-check", wait="]")
+            self.wait_write(cmd="undo local-aaa-user password policy administrator", wait="]")
         self.wait_write(cmd=f"undo local-user {self.username}", wait="]")
         self.wait_write(
             cmd=f"local-user {self.username} password irreversible-cipher {self.password}",
