@@ -47,22 +47,33 @@ class VRP_vm(vrnetlab.VM):
                 disk_image = "/" + e
                 if "huawei_ne40e" in e:
                     self.vm_type = "NE40E"
+                    ram=2048,
+                    smp="2",
                 if "huawei_ce12800" in e:
                     self.vm_type = "CE12800"
+                    ram=2048,
+                    smp="2",
+                if "huawei_ar1000v" in e:
+                    self.vm_type = "AR1000V"
+                    ram=2048,
+                    smp="1",
 
         super(VRP_vm, self).__init__(
             username,
             password,
             disk_image=disk_image,
-            ram=2048,
-            smp="2",
             driveif="virtio",
         )
 
         self.hostname = hostname
         self.conn_mode = conn_mode
-        self.num_nics = 14
         self.nic_type = "virtio-net-pci"
+
+        if self.vm_type == "AR1000V":
+            self.num_nics = 6
+        else:
+            self.num_nics = 14
+
 
     def bootstrap_spin(self):
         """This function should be called periodically to do work."""
@@ -73,21 +84,34 @@ class VRP_vm(vrnetlab.VM):
             self.start()
             return
 
-        (ridx, match, res) = self.tn.expect([b"<HUAWEI>"], 1)
+        (ridx, match, res) = self.tn.expect([
+            b"Press any key to get started", #0
+            b"Username:", #1
+            b"Password:", #2
+            #b"<HUAWEI>", #3
+        ], 1)
 
-        if match and ridx == 0:  # got a match!
-            # run main config!
-            self.logger.info("Running bootstrap_config()")
-            self.startup_config()
-            self.bootstrap_config()
-            time.sleep(1)
-            # close telnet connection
-            self.tn.close()
-            # startup time?
-            startup_time = datetime.datetime.now() - self.start_time
-            self.logger.info("Startup complete in: %s" % startup_time)
-            # mark as running
-            self.running = True
+        if match:
+            if ridx == 0: #Press any key to get started
+                self.wait_write(cmd="", wait=None)
+            elif ridx == 1: #Username:
+                self.wait_write(cmd="super", wait=None)
+            elif ridx == 2: #Password:
+                self.wait_write(cmd="super", wait=None)
+            #elif ridx == 3:  # got a match!
+                # run main config!
+                time.sleep(5)
+                self.logger.info("Running bootstrap_config()")
+                self.startup_config()
+                self.bootstrap_config()
+                time.sleep(1)
+                # close telnet connection
+                self.tn.close()
+                # startup time?
+                startup_time = datetime.datetime.now() - self.start_time
+                self.logger.info("Startup complete in: %s" % startup_time)
+                # mark as running
+                self.running = True
             return
 
         time.sleep(5)
@@ -98,13 +122,13 @@ class VRP_vm(vrnetlab.VM):
             self.logger.trace("OUTPUT: %s" % res.decode())
             # reset spins if we saw some output
             self.spins = 0
-
-        self.spins += 1
-
-        return
+        if self.vm_type == "CE12800":
+            return
 
     def bootstrap_mgmt_interface(self):
-        self.wait_write(cmd="mmi-mode enable", wait=None)
+        #self.wait_write(cmd="mmi-mode enable", wait=None)
+        self.wait_write(cmd="screen-length 0", wait=None)
+        self.wait_write(cmd="undo terminal monitor", wait=">")
         self.wait_write(cmd="system-view", wait=">")
         self.wait_write(cmd="ip vpn-instance __MGMT_VPN__", wait="]")
         self.wait_write(cmd="ipv4-family", wait="]")
@@ -114,22 +138,26 @@ class VRP_vm(vrnetlab.VM):
             mgmt_interface = "MEth"
         if self.vm_type == "NE40E":
             mgmt_interface = "GigabitEthernet"
+        if self.vm_type == "AR1000V":
+            mgmt_interface = "GigabitEthernet"
         self.wait_write(cmd=f"interface {mgmt_interface} 0/0/0", wait="]")
         # Error: The system is busy in building configuration. Please wait for a moment...
-        while True:
-            self.wait_write(cmd="clear configuration this", wait=None)
-            (idx, match, res) = self.tn.expect([rb"Error"], 1)
-            if match and idx == 0:
-                time.sleep(5)
-            else:
-                break
+        if self.vm_type != "AR1000V":
+            while True:
+                self.wait_write(cmd="clear configuration this", wait=None)
+                (idx, match, res) = self.tn.expect([rb"Error"], 1)
+                if match and idx == 0:
+                    time.sleep(5)
+                else:
+                    break
         self.wait_write(cmd="undo shutdown", wait=None)
-        self.wait_write(cmd="ip binding vpn-instance __MGMT_VPN__", wait="]")
+        self.wait_write(cmd="ip binding vpn-instance __MGMT_VPN__", wait=None)
         self.wait_write(cmd="ip address 10.0.0.15 24", wait="]")
         self.wait_write(cmd="quit", wait="]")
         self.wait_write(
             cmd="ip route-static vpn-instance __MGMT_VPN__ 0.0.0.0 0 10.0.0.2", wait="]"
         )
+        #self.wait_write(cmd="display current", wait="]")
 
     def bootstrap_config(self):
         """Do the actual bootstrap config"""
@@ -144,15 +172,23 @@ class VRP_vm(vrnetlab.VM):
             self.wait_write(cmd="undo user-security-policy enable", wait="]")
 
         self.wait_write(cmd="aaa", wait="]")
+        if self.vm_type == "AR1000V":
+            self.wait_write(cmd="undo user-password complexity-check", wait="]")
         self.wait_write(cmd=f"undo local-user {self.username}", wait="]")
         self.wait_write(
             cmd=f"local-user {self.username} password irreversible-cipher {self.password}",
             wait="]",
         )
         self.wait_write(cmd=f"local-user {self.username} service-type ssh", wait="]")
-        self.wait_write(
-            cmd=f"local-user {self.username} user-group manage-ug", wait="]"
-        )
+        if self.vm_type == "AR1000V":
+            self.wait_write(
+            cmd=f"local-user {self.username} privilege level 15", wait="]"
+            )
+            self.wait_write(cmd=f"y", wait="]")
+        else:
+            self.wait_write(
+                cmd=f"local-user {self.username} user-group manage-ug", wait="]"
+            )
         self.wait_write(cmd="quit", wait="]")
 
         # SSH
@@ -164,19 +200,26 @@ class VRP_vm(vrnetlab.VM):
         self.wait_write(
             cmd=f"ssh user {self.username} authentication-type password ", wait="]"
         )
-        self.wait_write(cmd=f"ssh user {self.username} service-type all ", wait="]")
+        if self.vm_type != "AR1000V":
+            self.wait_write(cmd=f"ssh user {self.username} service-type all ", wait="]")
         self.wait_write(cmd="stelnet server enable", wait="]")
 
         # NETCONF
-        self.wait_write(cmd="snetconf server enable", wait="]")
-        self.wait_write(cmd="netconf", wait="]")
-        self.wait_write(cmd="protocol inbound ssh port 830", wait="]")
-        self.wait_write(cmd="quit", wait="]")
+        if self.vm_type != "AR1000V":
+            self.wait_write(cmd="snetconf server enable", wait="]")
+            self.wait_write(cmd="netconf", wait="]")
+            self.wait_write(cmd="protocol inbound ssh port 830", wait="]")
+            self.wait_write(cmd="quit", wait="]")
 
-        self.wait_write(cmd="commit", wait="]")
-        self.wait_write(cmd="return", wait="]")
-        self.wait_write(cmd="save", wait=">")
-        self.wait_write(cmd="undo mmi-mode enable", wait=">")
+            self.wait_write(cmd="commit", wait="]")
+            self.wait_write(cmd="return", wait="]")
+            self.wait_write(cmd="save", wait=">")
+            self.wait_write(cmd="undo mmi-mode enable", wait=">")
+        
+        if self.vm_type == "AR1000V":
+            self.wait_write(cmd="quit", wait="]")
+            self.wait_write(cmd="save", wait=">")
+            self.wait_write(cmd="y", wait=">")
 
     def startup_config(self):
         if not os.path.exists(STARTUP_CONFIG_FILE):
