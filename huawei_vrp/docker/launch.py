@@ -84,23 +84,40 @@ class VRP_vm(vrnetlab.VM):
             self.start()
             return
 
-        (ridx, match, res) = self.tn.expect([
-            b"Press any key to get started", #0
-            b"Username:", #1
-            b"Password:", #2
-            #b"<HUAWEI>", #3
-        ], 1)
+        if self.vm_type == "AR1000V":
+            (ridx, match, res) = self.tn.expect([
+                b"Press any key to get started", #0
+                b"Username:", #1
+                b"Password:", #2
+                #b"<HUAWEI>", #3
+            ], 5)
 
-        if match:
-            if ridx == 0: #Press any key to get started
-                self.wait_write(cmd="", wait=None)
-            elif ridx == 1: #Username:
-                self.wait_write(cmd="super", wait=None)
-            elif ridx == 2: #Password:
-                self.wait_write(cmd="super", wait=None)
-            #elif ridx == 3:  # got a match!
+            if match:
+                if ridx == 0: #Press any key to get started
+                    self.wait_write(cmd="", wait=None)
+                elif ridx == 1: #Username:
+                    self.wait_write(cmd="super", wait=None)
+                elif ridx == 2: #Password:
+                    self.wait_write(cmd="super", wait=None)
+                    self.logger.info("Running bootstrap_config()")
+                    self.startup_config()
+                    self.bootstrap_config()
+                    time.sleep(1)
+                    # close telnet connection
+                    self.tn.close()
+                    # startup time?
+                    startup_time = datetime.datetime.now() - self.start_time
+                    self.logger.info("Startup complete in: %s" % startup_time)
+                    # mark as running
+                    self.running = True
+                    return
+        
+        else:
+
+            (ridx, match, res) = self.tn.expect([b"<HUAWEI>"], 1)
+
+            if match and ridx == 0:  # got a match!
                 # run main config!
-                time.sleep(5)
                 self.logger.info("Running bootstrap_config()")
                 self.startup_config()
                 self.bootstrap_config()
@@ -112,7 +129,7 @@ class VRP_vm(vrnetlab.VM):
                 self.logger.info("Startup complete in: %s" % startup_time)
                 # mark as running
                 self.running = True
-            return
+                return
 
         time.sleep(5)
 
@@ -122,8 +139,9 @@ class VRP_vm(vrnetlab.VM):
             self.logger.trace("OUTPUT: %s" % res.decode())
             # reset spins if we saw some output
             self.spins = 0
-        if self.vm_type == "CE12800":
-            return
+        self.spins += 1
+
+        return
 
     def bootstrap_mgmt_interface(self):
         #self.wait_write(cmd="mmi-mode enable", wait=None)
@@ -151,13 +169,12 @@ class VRP_vm(vrnetlab.VM):
                 else:
                     break
         self.wait_write(cmd="undo shutdown", wait=None)
-        self.wait_write(cmd="ip binding vpn-instance __MGMT_VPN__", wait=None)
+        self.wait_write(cmd="ip binding vpn-instance __MGMT_VPN__", wait="]")
         self.wait_write(cmd="ip address 10.0.0.15 24", wait="]")
         self.wait_write(cmd="quit", wait="]")
         self.wait_write(
             cmd="ip route-static vpn-instance __MGMT_VPN__ 0.0.0.0 0 10.0.0.2", wait="]"
         )
-        #self.wait_write(cmd="display current", wait="]")
 
     def bootstrap_config(self):
         """Do the actual bootstrap config"""
@@ -210,9 +227,26 @@ class VRP_vm(vrnetlab.VM):
             self.wait_write(cmd="snetconf server enable", wait="]")
             self.wait_write(cmd="netconf", wait="]")
             self.wait_write(cmd="protocol inbound ssh port 830", wait="]")
-            self.wait_write(cmd="quit", wait="]")
+            #self.wait_write(cmd="quit", wait="]")
 
+            # Envia o comando commit inicialmente
             self.wait_write(cmd="commit", wait="]")
+
+            while True:
+                (ridx, match, res) = self.tn.expect([
+                    b"Error: The system is busy in building system configurations. Please wait a moment and then try again.",  # 3
+                ], timeout=1)
+
+                if match:
+                    if ridx == 0:  # Mensagem de erro ao tentar commit
+                        print("Sistema ocupado, aguardando 5 segundos para tentar novamente...")
+                        time.sleep(5)
+                        self.wait_write(cmd="commit", wait=None)
+                    else:
+                        break  # Sai do loop caso não haja mais mensagens relevantes
+                else:
+                    break  # Sai do loop se nenhum match ocorrer dentro do timeout
+
             self.wait_write(cmd="return", wait="]")
             self.wait_write(cmd="save", wait=">")
             self.wait_write(cmd="undo mmi-mode enable", wait=">")
