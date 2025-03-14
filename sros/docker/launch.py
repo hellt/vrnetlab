@@ -872,7 +872,7 @@ def parse_custom_variant(cfg):
 # sort line card definitions if they were provided in a non-consequetive order
 def sort_lc_lines_by_slot(lc_lines: list) -> list:
     max_slot = 99
-    timos_tuples = [(v.get("slot", max_slot), v) for v in lc_lines]
+    timos_tuples = [(int(v.get("slot", max_slot)), v) for v in lc_lines]
     sorted_timos = [t_tupple[1] for t_tupple in sorted(timos_tuples)]
     return sorted_timos
 
