@@ -39,8 +39,13 @@ logging.Logger.trace = trace
 
 class VQFX_vcp(vrnetlab.VM):
     def __init__(self, hostname, username, password, conn_mode, version, disk_image):
-        super(VQFX_vcp, self).__init__(
-            username, password, disk_image=disk_image, ram=2048
+        super().__init__(
+            username,
+            password,
+            disk_image=disk_image,
+            smp="4",
+            ram=4096,
+            use_scrapli=True,
         )
         self.num_nics = 12
         self.conn_mode = conn_mode
@@ -99,7 +104,7 @@ class VQFX_vcp(vrnetlab.VM):
         if self._version["major"] < 20:
             logged_in_prompt = b"root@vqfx-re:RE:0%"
 
-        (ridx, match, res) = self.tn.expect([b"login:", logged_in_prompt], 1)
+        (ridx, match, res) = self.con_expect([b"login:", logged_in_prompt])
         if match:  # got a match!
             if ridx == 0:  # matched login prompt, so should login
                 self.logger.info("matched login prompt")
@@ -113,7 +118,7 @@ class VQFX_vcp(vrnetlab.VM):
                 self.bootstrap_config()
                 self.startup_config()
                 self.running = True
-                self.tn.close()
+                self.scrapli_tn.close()
                 # calc startup time
                 startup_time = datetime.datetime.now() - self.start_time
                 self.logger.info("Startup complete in: %s" % startup_time)
@@ -180,28 +185,11 @@ class VQFX_vcp(vrnetlab.VM):
 
             self.logger.info("Done loading config file %s" % STARTUP_CONFIG_FILE)
 
-    def wait_write(self, cmd, wait="#", timeout=None):
-        """Wait for something and then send command"""
-        if wait:
-            self.logger.trace("Waiting for %s" % wait)
-            while True:
-                (ridx, match, res) = self.tn.expect(
-                    [wait.encode(), b"Retry connection attempts"], timeout=timeout
-                )
-                if match:
-                    if ridx == 0:
-                        break
-                    if ridx == 1:
-                        self.tn.write("yes\r".encode())
-            self.logger.trace("Read: %s" % res.decode())
-        self.logger.debug("writing to serial console: %s" % cmd)
-        self.tn.write("{}\r".format(cmd).encode())
-
 
 class VQFX_vpfe(vrnetlab.VM):
     def __init__(self, disk_image):
         super(VQFX_vpfe, self).__init__(
-            None, None, disk_image=disk_image, num=1, ram=2048
+            None, None, disk_image=disk_image, num=2, ram=4096, use_scrapli=True
         )
         self.num_nics = 0
 
@@ -234,7 +222,7 @@ class VQFX_vpfe(vrnetlab.VM):
 
     def bootstrap_spin(self):
         self.running = True
-        self.tn.close()
+        self.scrapli_tn.close()
         return
 
 
@@ -242,7 +230,7 @@ class VQFX(vrnetlab.VR):
     """Juniper vQFX router"""
 
     def __init__(self, hostname, username, password, conn_mode):
-        super(VQFX, self).__init__(username, password)
+        super().__init__(username, password)
 
         self.read_version()
 

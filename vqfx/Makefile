@@ -19,7 +19,6 @@ format-legacy-images:
 
 # TODO: we should make sure we only copy one PFE image (the latest?), in case there are many
 docker-pre-build:
-
 	echo "pfe     $(PFE_IMAGE)"
 	cp vqfx*-pfe*.qcow* docker/
 	echo "image   $(IMAGE)"
