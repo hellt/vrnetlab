@@ -119,7 +119,11 @@ class VM:
         will write all channel i/o as DEBUG log level.
         """
         self.scrapli_logger = logging.getLogger("scrapli")
-        self.scrapli_logger.setLevel(logging.INFO)
+        
+        scrapli_log_level = logging.DEBUG if os.getenv("DEBUG_SCRAPLI", "false").lower() == "true" else logging.INFO
+        self.scrapli_logger.setLevel(scrapli_log_level)
+        
+        
 
         # configure scrapli
         if self.use_scrapli:
