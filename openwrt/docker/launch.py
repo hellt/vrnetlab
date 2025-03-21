@@ -63,12 +63,16 @@ class OpenWRT_vm(vrnetlab.VM):
         # Remove all tc rules for each interface
         for iface in interfaces:
             self.logger.info(f"Flushing tc rules for {iface}")
-            result = subprocess.run(["tc", "qdisc", "del", "dev", iface, "clsact"], capture_output=True, text=True)
-
-            if result.returncode == 0:
+            try:
+                subprocess.run(
+                    ["/sbin/tc", "qdisc", "del", "dev", iface, "clsact"],
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
                 self.logger.info(f"Successfully flushed tc rules for {iface}")
-            else:
-                self.logger.error(f"Failed to flush tc rules for {iface}: {result.stderr}")
+            except subprocess.CalledProcessError as e:
+                self.logger.error(f"Failed to flush tc rules for {iface}: {e.stderr}")
 
         self.start()
 
@@ -823,17 +827,17 @@ class OpenWRT_vm(vrnetlab.VM):
             self.wait_write(self.password, "New password:")
             self.wait_write(self.password, "Retype password:")
             # Create vrnetlab user
-            self.wait_write("echo '%s:x:501:501:%s:/home/%s:/bin/ash' >> /etc/passwd" %(self.username, self.username, self.username), "#")
-            self.wait_write("passwd %s" %(self.username))
+            self.wait_write(f"echo '{self.username}:x:501:501:{self.username}:/home/{self.username}:/bin/ash' >> /etc/passwd", "#")
+            self.wait_write(f"passwd {self.username}")
             self.wait_write(self.password, "New password:")
             self.wait_write(self.password, "Retype password:")
             # Add user to root group
             self.wait_write("sed -i '1d' /etc/group", "#")
-            self.wait_write("sed -i '1i root:x:0:%s' /etc/group" % (self.username))
+            self.wait_write(f"sed -i '1i root:x:0:{self.username}' /etc/group")
             # Create home dir
-            self.wait_write("mkdir -p /home/%s" %(self.username))
-            self.wait_write("chown %s /home/%s" %(self.username, self.username))
-            self.wait_write("chown %s /etc/config/ -R" %(self.username))
+            self.wait_write(f"mkdir -p /home/{self.username}")
+            self.wait_write(f"chown {self.username} /home/{self.username}")
+            self.wait_write(f"chown {self.username} /etc/config/ -R")
 
         # Track changes
         changes_network = 0
