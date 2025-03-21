@@ -801,7 +801,6 @@ class OpenWRT_vm(vrnetlab.VM):
     def bootstrap_config(self):
         """ Do the actual bootstrap config
         """
-        firstboot = 0
         self.logger.info("applying bootstrap configuration")
         # Get a prompt
         self.wait_write("\r", None)
@@ -815,7 +814,6 @@ class OpenWRT_vm(vrnetlab.VM):
 
         if "No such file" in output or output == "":
             # File does not exist, create it
-            firstboot = 1
             self.logger.info("First boot detected")
             self.tn.write(b"touch /.firstboot\n")
             time.sleep(0.5)
