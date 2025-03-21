@@ -884,7 +884,7 @@ import click
 @click.option('--username','-u', default='root',   envvar='USERNAME', required=True, help="Username")
 @click.option('--password','-p', default='VR-netlab9', envvar='PASSWORD', required=True, help="Password")
 @click.option('--connection-mode','-c', default='tc', envvar='CONNECTION_MODE', required=True, help="connection mode")
-@click.option('--nics','-n', default='16', required=True, type=int, help="Number of NICS")
+@click.option('--nics','-n', default='16', envvar='NICS', required=True, type=int, help="Number of NICS")
 @click.option('--hostname','-h', envvar='HOSTNAME', required=False, help="Hostname")
 @click.option('--packet-repository-domains','-prd', envvar='PACKET_REPOSITORY_DOMAINS', required=False, help="repository domains like downloads.openwrt.com")
 @click.option('--packet-repository-dns-server','-prds', default='8.8.8.8', envvar='PACKET_REPOSITORY_DNS_SERVER', required=True, help="default 8.8.8.8 only one IP")
