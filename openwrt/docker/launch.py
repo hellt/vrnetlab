@@ -408,7 +408,7 @@ class OpenWRT_vm(vrnetlab.VM):
 
                 # Add eth2 to br-lan if not present
                 if not eth2_in_brlan:
-                    self.logger.info(f"✅ Adding `eth2` to `br-lan`...")
+                    self.logger.info("✅ Adding `eth2` to `br-lan`...")
                     self.tn.write(f"uci add_list network.@device[-1].ports='{self.lan_interface_device}'\r\n".encode("utf-8"))
                     time.sleep(0.5)
                     changes_network = 1  # Mark network as changed
@@ -868,7 +868,6 @@ class OpenWRT_vm(vrnetlab.VM):
         self.reload_services(changes_network, changes_firewall)
 
         self.logger.info("completed bootstrap configuration")
-        # logout (control+d) 
         self.tn.write(b"\x04")
         time.sleep(0.5)
 
