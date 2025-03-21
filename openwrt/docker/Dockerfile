@@ -12,6 +12,8 @@ RUN apk add --no-cache bash \
     py3-click \
     nano \
     vim \
+    tcpdump \
+    busybox-extras \
     py3-pip && ln -sf python3 /usr/bin/python
 
 RUN pip3 install --no-cache --upgrade pip setuptools
@@ -21,6 +23,6 @@ ARG IMAGE
 COPY $IMAGE* /
 COPY *.py /
 
-EXPOSE 22 161/udp 80 830 5000 10000-10099
+EXPOSE 22 161/udp 80 443 830 5000 10000-10099
 HEALTHCHECK CMD ["/healthcheck.py"]
 ENTRYPOINT ["/launch.py"]
