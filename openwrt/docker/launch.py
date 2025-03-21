@@ -65,12 +65,13 @@ class OpenWRT_vm(vrnetlab.VM):
             self.logger.info(f"Flushing tc rules for {iface}")
             result = subprocess.run(["tc", "qdisc", "del", "dev", iface, "clsact"], capture_output=True, text=True)
 
-        if result.returncode == 0:
-            self.logger.info(f"Successfully flushed tc rules for {iface}")
-        else:
-            self.logger.error(f"Failed to flush tc rules for {iface}: {result.stderr}")
+            if result.returncode == 0:
+                self.logger.info(f"Successfully flushed tc rules for {iface}")
+            else:
+                self.logger.error(f"Failed to flush tc rules for {iface}: {result.stderr}")
 
         self.start()
+
 
     def bootstrap_spin(self):
         """ This function should be called periodically to do work.
