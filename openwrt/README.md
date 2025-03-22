@@ -45,7 +45,7 @@ name: openwrt
 topology:
   nodes:
     openwrt:
-      kind: vr-openwrt
+      kind: openwrt
       image: vrnetlab/openwrt_openwrt:24.10.0
       mgmt-ipv4: 172.20.20.12                             # optional
       mgmt_ipv6: 2001:172:20:20::12                       # optional
@@ -88,9 +88,9 @@ A: `eth2`
 A: No, this is not supported.
 
 #### Q: Does my configuration survive a redeploy?
-A: Only if you're using the `vr-openwrt` kind or if you're using a bind mount.
+A: Only if you're using the `openwrt` kind or if you're using a bind mount.
 
-#### Q: How do I get persistence without using the `vr-openwrt` kind?
+#### Q: How do I get persistence without using the `openwrt` kind?
 A: Use the `linux` kind and bind-mount a volume to `/overlay/`. Make sure the container has write permissions.
 
 ##### Q: How can I get a shell into OpenWRT?
