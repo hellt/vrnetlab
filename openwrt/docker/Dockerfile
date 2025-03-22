@@ -1,26 +1,11 @@
-FROM alpine:3.18
-MAINTAINER Andreas Cymbal takalele@konnex.me
+FROM ghcr.io/srl-labs/vrnetlab-base:0.2.1
+LABEL maintainer="Andreas Cymbal takalele@konnex.me"
 
-RUN apk add --no-cache bash \
-    qemu-system-x86_64 \
-    qemu-img \
-    socat \
-    net-tools \
-    iproute2 \
-    bridge-utils \
-    python3 \
-    py3-click \
-    nano \
-    vim \
-    py3-pip && ln -sf python3 /usr/bin/python
+ARG DEBIAN_FRONTEND=noninteractive
 
-RUN pip3 install --no-cache --upgrade pip setuptools
-RUN pip install IPy
+RUN uv add click
 
 ARG IMAGE
 COPY $IMAGE* /
 COPY *.py /
 
-EXPOSE 22 161/udp 80 830 5000 10000-10099
-HEALTHCHECK CMD ["/healthcheck.py"]
-ENTRYPOINT ["/launch.py"]
