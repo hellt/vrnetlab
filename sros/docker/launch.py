@@ -751,7 +751,7 @@ SROS_MD_COMMON_CFG = """
 # based on the release number.
 def get_version_specific_config(major_version: int):
     # releases <=22 boot with the classic CLI config by default
-    if major_version <= 22:
+    if major_version <= 22 and major_version > 0:
         return """
 /configure system management-interface yang-modules no nokia-submodules
 /configure system management-interface yang-modules nokia-combined-modules
@@ -1278,7 +1278,7 @@ class SROS_vm(vrnetlab.VM):
         # SROS <= 22 use classic configuration mode by defaults
         # other functions rely on this variable to determine what cmds to send
         global classic_cfg
-        classic_cfg = True if SROS_VERSION.major <= 22 or SROS_VERSION.magc else False
+        classic_cfg = True if (SROS_VERSION.major <= 22 and SROS_VERSION.major > 0) or SROS_VERSION.magc else False
 
         if config_exists:
             with open("/tftpboot/config.txt") as startup_cfg:
