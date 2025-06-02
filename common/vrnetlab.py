@@ -237,8 +237,9 @@ class VM:
         #  8080  - sonic gnmi/gnoi, other http apis
         #  9339  - iana gnmi/gnoi
         #  32767 - gnmi/gnoi juniper
+        #  50051 - cisco nx-os gnmi/gnoi
         #  57400 - nokia gnmi/gnoi
-        self.mgmt_tcp_ports = [80, 443, 830, 6030, 8080, 9339, 32767, 57400]
+        self.mgmt_tcp_ports = [80, 443, 830, 6030, 8080, 9339, 32767, 50051, 57400]
 
         # we setup pci bus by default
         self.provision_pci_bus = provision_pci_bus
@@ -496,6 +497,7 @@ class VM:
           8080  - sonic gnmi/gnoi, other http apis
           9339  - iana gnmi/gnoi
           32767 - gnmi/gnoi juniper
+          50051 - cisco nx-os gnmi/gnoi
           57400 - nokia gnmi/gnoi
         """
         if self.mgmt_host_ip + 1 >= self.mgmt_guest_ip:
