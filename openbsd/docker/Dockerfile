@@ -1,11 +1,19 @@
+FROM debian:bookworm-slim AS builder
+
+ARG DISK_SIZE=4G
+ARG IMAGE
+
+RUN apt-get update -qy && \
+   apt-get install -y --no-install-recommends qemu-utils && \
+   rm -rf /var/lib/apt/lists/*
+
+COPY $IMAGE* /
+RUN qemu-img resize /${IMAGE} ${DISK_SIZE}
+
 FROM debian:bookworm-slim
 
-ARG DEBIAN_FRONTEND=noninteractive
-ARG DISK_SIZE=4G
-
 RUN apt-get update -qy \
-   && apt-get upgrade -qy \
-   && apt-get install -y \
+   && apt-get install -y --no-install-recommends\
    bridge-utils \
    iproute2 \
    python3-ipy \
@@ -23,11 +31,9 @@ RUN apt-get update -qy \
    && rm -rf /var/lib/apt/lists/*
 
 ARG IMAGE
-COPY $IMAGE* /
+COPY --from=builder $IMAGE* /
 COPY *.py /
 COPY --chmod=0755 backup.sh /
-
-RUN qemu-img resize /${IMAGE} ${DISK_SIZE}
 
 EXPOSE 22 5000 10000-10099
 HEALTHCHECK CMD ["/healthcheck.py"]
