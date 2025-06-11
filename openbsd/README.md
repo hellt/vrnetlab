@@ -18,7 +18,7 @@ with the following images:
 ## Usage
 
 ```
-docker run -d --privileged --name <container_name> vrnetlab/vr-openbsd:<tag> --username <username> --password <password>
+docker run -d --privileged --name <container_name> vrnetlab/openbsd-openbsd:<tag> --username <username> --password <password>
 ```
 
 Where:
@@ -30,7 +30,7 @@ Where:
 Example:
 
 ```
-docker run -d --privileged --name my-obsd-router vrnetlab/vr-openbsd:7.3 --username admin --password admin
+docker run -d --privileged --name my-obsd-router vrnetlab/openbsd-openbsd:7.3 --username admin --password admin
 ```
 
 It will take about 1 minute for the container to boot. After that, you can try to ssh to the container's IP or telnet to port 5000 for console access.
