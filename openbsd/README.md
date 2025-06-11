@@ -2,13 +2,13 @@
 
 This is the vrnetlab docker image for OpenBSD.
 
-This docker image requires a custom-built OpenBSD image with pre-installed [cloud-init](https://cloudinit.readthedocs.io/en/latest/). You can download such images from https://bsd-cloud-image.org/.
+This docker image requires a custom-built OpenBSD image with pre-installed [cloud-init](https://cloudinit.readthedocs.io/en/latest/). You can download such images from https://github.com/hcartiaux/openbsd-cloud-image.
 
 ## Building the docker image
 
-Run `make download`. It will try to download the latest OpenBSD release from https://bsd-cloud-image.org/ to this directory. Then run `make` to build a docker image.
+Run `make download`. It will try to download the latest OpenBSD release from https://github.com/hcartiaux/openbsd-cloud-image to this directory. Then run `make` to build a docker image.
 
-If for some reasons you can't obtain an image from https://bsd-cloud-image.org/, you can build it yourself with the script from [this repository](https://github.com/goneri/pcib).
+If for some reasons you can't obtain an image from https://github.com/hcartiaux/openbsd-cloud-image, you can build it yourself with the script from [this repository](https://github.com/goneri/pcib).
 
 It's been tested to boot, respond to SSH and have correct interface mapping
 with the following images:
