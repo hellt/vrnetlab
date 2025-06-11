@@ -1,22 +1,28 @@
 #!/bin/bash
 
-# Webpage with links to images
-base_url="https://bsd-cloud-image.org"
+# Repo name
+repo="hcartiaux/openbsd-cloud-image"
 
-# Download the webpage content
-webpage_content=$(curl -s "$base_url")
+# Asset name
+asset="openbsd-min.qcow2"
 
-# Find URLs that match the pattern "openbsd*.qcow2" and select the most recent version
-download_url=$(echo "$webpage_content" | grep -oE 'https?://[^"]+openbsd[^"]+\.qcow2' | sort | tail -n 1)
+# Link to the API information of the latest release
+api_url="https://api.github.com/repos/${repo}/releases/latest"
 
-# Extract the filename from the URL
-filename=$(basename "$download_url")
+# Query the API and get the latest tag
+tag=$(curl -s "$api_url" | jq -r ".tag_name")
+
+# Link to the latest release
+download_url="https://github.com/${repo}/releases/latest/download/${asset}"
+
+# Build the filename from the asset and the tag
+filename="${asset%.*}_${tag}.${asset##*.}"
 
 # Check if the file already exists in the current directory
 if [ -e "$filename" ]; then
     echo "File $filename already exists. Skipping download."
 else
-    # Download the URL
-    curl -O "$download_url"
+    # Download the file
+    curl -L -s "$download_url" -o "$filename"
     echo "Download complete: $filename"
 fi
