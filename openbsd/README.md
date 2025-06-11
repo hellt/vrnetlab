@@ -47,6 +47,6 @@ Interface `vio0` is always configured as a management interface. Interfaces `vio
 
 ## System requirements
 
-CPU: 1 core  
-RAM: 512MB  
+CPU: 1 core
+RAM: 512MB
 DISK: 4.0GB
