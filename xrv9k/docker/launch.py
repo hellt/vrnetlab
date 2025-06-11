@@ -226,6 +226,18 @@ root
         self.scrapli_tn.close()
 
         with IOSXRDriver(**xrv9k_scrapli_dev) as con:
+            # Configure SSH keys
+            con.send_interactive(
+                [
+                    (
+                        "crypto key generate rsa",
+                        "How many bits in the modulus [2048]",
+                        False,
+                    ),
+                    ("4096", "#", True),
+                ]
+            )
+            con.send_command("crypto key generate ecdsa nistp521")
             res = con.send_configs(xrv9k_config.splitlines())
             res += con.send_configs(["commit best-effort label CLAB_BOOTSTRAP", "end"])
 
