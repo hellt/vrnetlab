@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim AS builder
+FROM public.ecr.aws/docker/library/debian:bookworm-slim AS builder
 
 ARG DISK_SIZE=4G
 ARG IMAGE
@@ -10,7 +10,7 @@ RUN apt-get update -qy && \
 COPY $IMAGE* /
 RUN qemu-img resize /${IMAGE} ${DISK_SIZE}
 
-FROM debian:bookworm-slim
+FROM public.ecr.aws/docker/library/debian:bookworm-slim
 
 RUN apt-get update -qy \
    && apt-get install -y --no-install-recommends\

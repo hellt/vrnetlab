@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim AS builder
+FROM public.ecr.aws/docker/library/debian:bookworm-slim AS builder
 
 ARG DISK_SIZE=4G
 
@@ -10,7 +10,7 @@ ARG IMAGE
 COPY $IMAGE* /
 RUN qemu-img resize /$IMAGE $DISK_SIZE
 
-FROM debian:bookworm-slim
+FROM public.ecr.aws/docker/library/debian:bookworm-slim
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG DISK_SIZE=4G
@@ -35,6 +35,7 @@ RUN apt-get update -qy \
 ARG IMAGE
 COPY --from=builder $IMAGE* /
 COPY *.py /
+COPY --chmod=0755 backup.sh /
 
 EXPOSE 22 5000 10000-10099
 HEALTHCHECK CMD ["/healthcheck.py"]
