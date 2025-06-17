@@ -173,6 +173,9 @@ class VRP_vm(vrnetlab.VM):
         self.wait_write(cmd="protocol inbound ssh port 830", wait="]")
         self.wait_write(cmd="quit", wait="]")
 
+        # Reset or undo DCN configuration
+        self.wait_write(cmd="undo dcn", wait="]")
+
         self.wait_write(cmd="commit", wait="]")
         self.wait_write(cmd="return", wait="]")
         self.wait_write(cmd="save", wait=">")
