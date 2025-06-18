@@ -57,7 +57,7 @@ class OCNOS_vm(vrnetlab.VM):
         )
         self.hostname = hostname
         self.conn_mode = conn_mode
-        self.num_nics = 8
+        self.num_nics = 62
         self.nic_type = "virtio-net-pci"
 
     def bootstrap_spin(self):
