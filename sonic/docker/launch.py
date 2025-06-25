@@ -110,6 +110,8 @@ class SONiC_vm(vrnetlab.VM):
         self.wait_write("sleep 1", "#")
         self.wait_write("hostnamectl set-hostname %s" % (self.hostname))
         self.wait_write("sleep 1", "#")
+        self.wait_write("printf '127.0.0.1\\t%s\\n' >> /etc/hosts" % (self.hostname))
+        self.wait_write("sleep 1", "#")
         self.logger.info("completed bootstrap configuration")
 
     def startup_config(self):
