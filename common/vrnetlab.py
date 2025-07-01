@@ -642,7 +642,7 @@ class VM:
 
         res = []
 
-        pci_bus_ctr = self.num_provisioned_nics
+        pci_bus_ctr = self.num_provisioned_nics + 1
 
         for i in range(0, nics):
             # dummy interface naming
