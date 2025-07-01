@@ -87,6 +87,9 @@ class OpenBSD_vm(vrnetlab.VM):
             # Disable cloud-init for the subsequent boots
             cfg_file.write("runcmd:\n")
             cfg_file.write("  - rm /etc/rc.local\n")
+            # Disable kernel and library re-linking for subsequent boots
+            cfg_file.write("  - rm /var/db/kernel.SHA256\n")
+            cfg_file.write("  - echo library_aslr=NO >> /etc/rc.conf.local\n")
 
         with open("/network_config.yaml", "w") as net_cfg_file:
             net_cfg_file.write("version: 2\n")
