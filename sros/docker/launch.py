@@ -103,6 +103,16 @@ class SROSVersion:
 # SROS_VERSION global variable is used to store the SROS version components
 SROS_VERSION = SROSVersion(version="", major=0, minor=0, patch=0, magc=False)
 
+#SROS_DUALCP global variable is used to signal if two CPMs are desired when a pre-packaged SROS variant is selected
+SROS_DUALCP = (
+            os.environ.get("DUAL_CP", "").lower() == "true"
+            if os.environ.get("DUAL_CP")
+            else False
+        )
+
+#Once bootstrap completes on the Active CP VM, this global variable will be set to true so that Standby CP VM can abort the bootstrap process.
+CP_BOOTSTRAP_DONE = False 
+
 
 # line_card_config is a convenience function that generates line card definition strings
 def line_card_config(
@@ -127,10 +137,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 34,  # 24*10 + 8*25G + 2*100G (with connector)
-        "cp": {
-            "min_ram": 3,
-            "timos_line": "slot=A chassis=ixr-e card=cpm-ixr-e",
-        },
+        "cps": [
+            {
+                "min_ram": 3,
+                "timos_line": "slot=A chassis=ixr-e card=cpm-ixr-e",
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -183,10 +195,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 54,
-        "cp": {
-            "min_ram": 3,
-            "timos_line": "slot=A chassis=ixr-s card=cpm-ixr-s",
-        },
+        "cps": [
+            {
+                "min_ram": 3,
+                "timos_line": "slot=A chassis=ixr-s card=cpm-ixr-s",
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -202,10 +216,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 36,  # 32 * qsfp28 + 4 * qsfpdd
-        "cp": {
-            "min_ram": 3,
-            "timos_line": "chassis=ixr-x slot=A card=cpm-ixr-x/imm32-qsfp28+4-qsfpdd",
-        },
+        "cps": [
+            {
+                "min_ram": 3,
+                "timos_line": "chassis=ixr-x slot=A card=cpm-ixr-x/imm32-qsfp28+4-qsfpdd",
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -222,10 +238,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 54,  # 6 * qsfpdd + 48 * sfp56
-        "cp": {
-            "min_ram": 3,
-            "timos_line": "chassis=ixr-x slot=A card=cpm-ixr-x/imm6-qsfpdd+48-sfp56",
-        },
+        "cps": [
+            {
+                "min_ram": 3,
+                "timos_line": "chassis=ixr-x slot=A card=cpm-ixr-x/imm6-qsfpdd+48-sfp56",
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -242,10 +260,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 36,  # 36 * qsfpdd
-        "cp": {
+        "cps": [
+            {
             "min_ram": 4,
             "timos_line": "chassis=ixr-x3 slot=A card=cpm-ixr-x/imm36-qsfpdd",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -262,10 +282,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 18,
-        "cp": {
+        "cps": [
+            {
             "min_ram": 3,
             "timos_line": "slot=A chassis=ixr-e card=imm14-10g-sfp++4-1g-tx",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -342,11 +364,13 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         "max_nics": 10,  # 8+2
         "power": {"modules": {"ac/hv": 3, "dc": 4}},
-        "cp": {
+        "cps": [ 
+            {
             "min_ram": 3,
             # The 7750 SR-2s uses an integrated switch fabric module (SFM) design
             "timos_line": "slot=A chassis=sr-2s sfm=sfm-2s card=cpm-2s",
-        },
+            },
+        ],
         "lcs": [
             {
                 "min_ram": 4,
@@ -365,11 +389,13 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         "max_nics": 36,
         "power": {"modules": {"ac/hv": 3, "dc": 4}},
-        "cp": {
+        "cps": [
+            {
             "min_ram": 4,
             # The 7750 SR-2se uses an integrated switch fabric module (SFM) design
             "timos_line": "slot=A chassis=sr-2se sfm=sfm-2se card=cpm-2se",
-        },
+            },
+        ],
         "lcs": [
             {
                 "min_ram": 8,
@@ -388,10 +414,12 @@ SROS_VARIANTS = {
         # control plane (CPM)
         "max_nics": 36,
         "power": {"modules": 10, "shelves": 2},
-        "cp": {
+        "cps": [
+            {
             "min_ram": 4,
             "timos_line": "slot=A chassis=SR-7s sfm=sfm2-s card=cpm2-s",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -413,10 +441,12 @@ SROS_VARIANTS = {
         # control plane (CPM)
         "max_nics": 36,
         "power": {"modules": 10, "shelves": 2},
-        "cp": {
+        "cps": [
+            {
             "min_ram": 4,
             "timos_line": "slot=A chassis=SR-7s sfm=sfm-s card=cpm2-s",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -438,10 +468,12 @@ SROS_VARIANTS = {
         # control plane (CPM)
         "max_nics": 16,
         "power": {"modules": 10, "shelves": 2},
-        "cp": {
+        "cps": [ 
+            {
             "min_ram": 4,
             "timos_line": "slot=A chassis=SR-7 sfm=m-sfm6-7/12 card=cpm5",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -461,10 +493,12 @@ SROS_VARIANTS = {
         # control plane (CPM)
         "max_nics": 36,
         "power": {"modules": 10, "shelves": 2},
-        "cp": {
+        "cps": [
+            {
             "min_ram": 4,
             "timos_line": "slot=A chassis=SR-14s sfm=sfm-s card=cpm2-s",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -502,10 +536,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 40,
-        "cp": {
+        "cps": [
+            {
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1e card=cpm-e",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -519,10 +555,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 12,
-        "cp": {
+        "cps": [
+            {
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1e card=cpm-e",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -539,10 +577,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 10,
-        "cp": {
+        "cps": [
+            {
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-a4 card=cpm-a",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -560,10 +600,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 48,
-        "cp": {
+        "cps": [
+            {
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1-46s card=cpm-1x/i40-200g-sfpdd+6-800g-qsfpdd-1",  # CP Card must include CPM/IOM
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -581,10 +623,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 48,
-        "cp": {
+        "cps": [
+            {
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1-92s card=cpm-1x/i80-200g-sfpdd+12-400g-qsfpdd-1",  # CP Card must include CPM/IOM
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -602,10 +646,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 48,
-        "cp": {
+        "cps": [
+            {
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1x-92s card=cpm-1x/i80-200g-sfpdd+12-800g-qsfpdd-1x",  # CP Card must include CPM/IOM
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -623,10 +669,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 48,
-        "cp": {
+        "cps": [
+            {
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1-24d card=cpm-1x",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -644,10 +692,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 48,
-        "cp": {
+        "cps": [
+            {
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1-48D card=cpm-1x/i48-400g-qsfpdd-1",  # CP Card must include CPM/IOM
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -665,10 +715,12 @@ SROS_VARIANTS = {
         "deployment_model": "distributed",
         # control plane (CPM)
         "max_nics": 48,
-        "cp": {
+        "cps": [
+            {
             "min_ram": 4,
             "timos_line": "slot=A chassis=sr-1x-48d card=cpm-1x",
-        },
+            },
+        ],
         # line card (IOM/XCM)
         "lcs": [
             {
@@ -772,12 +824,14 @@ def get_version_specific_config(major_version: int):
 # we needed to put SR OS management interface in the container host network namespace
 # this is done by putting SR OS management interface with into a br-mgmt bridge
 # the bridge and SR OS mgmt interfaces will be addressed as follows
-BRIDGE_V4_ADDR = "172.31.255.29"
-SROS_MGMT_V4_ADDR = "172.31.255.30"
-V4_PREFIX_LENGTH = "30"
-BRIDGE_V6_ADDR = "200::"
-SROS_MGMT_V6_ADDR = "200::1"
-V6_PREFIX_LENGTH = "127"
+BRIDGE_V4_ADDR = "172.31.255.1"
+SROS_MGMT_V4_ADDR_ACTIVE = "172.31.255.2"
+SROS_MGMT_V4_ADDR_STANDBY = "172.31.255.3"
+V4_PREFIX_LENGTH = "24"
+BRIDGE_V6_ADDR = "200::1"
+SROS_MGMT_V6_ADDR_ACTIVE = "200::2"
+SROS_MGMT_V6_ADDR_STANDBY = "200::3"
+V6_PREFIX_LENGTH = "64"
 
 # In pass-through mode, we also spin up a tftp server, but in this case we create a new namespace
 # inside the container that simulates the IP addressing of the host.
@@ -849,12 +903,14 @@ def parse_custom_variant(cfg):
     if "___" in cfg:
         variant["deployment_model"] = "distributed"
         variant["lcs"] = []
+        variant["cps"] = []
 
         for hw_part in cfg.split("___"):
             if "cp: " in hw_part:
-                variant["cp"] = parse_variant_line(
+                cp = parse_variant_line(
                     hw_part.strip(), None, skip_nics=True
                 )
+                variant["cps"].append(cp)
             elif "lc: " in hw_part:
                 lc = parse_variant_line(hw_part.strip(), None)
                 variant["lcs"].append(lc)
@@ -992,19 +1048,19 @@ class SROS_vm(vrnetlab.VM):
             f.write(ifup_script)
         os.chmod("/etc/tc-tap-mgmt-ifup", 0o777)
 
-    def attach_cf(self, slot, cfname, size):
+    def attach_cf(self, cfname, size):
         """Attach extra CF. Create if needed."""
         cfname = cfname.lower()
-        path = f"/tftpboot/{cfname}_{slot}.qcow2"
+        path = f"/tftpboot/{cfname}_{self.slot}.qcow2"
 
         if not os.path.exists(path):
             self.logger.debug(
-                f"Slot {slot}: creating {cfname} disk with size {size} -> {path}"
+                f"Slot {self.slot}: creating {cfname} disk with size {size} -> {path}"
             )
             vrnetlab.run_command(["qemu-img", "create", "-f", "qcow2", path, size])
         else:
             self.logger.debug(
-                f"Slot {slot}: bypassed creation of {cfname} disk because it already exist -> {path}. "
+                f"Slot {self.slot}: bypassed creation of {cfname} disk because it already exist -> {path}. "
             )
 
         disk_idx = 1
@@ -1015,33 +1071,40 @@ class SROS_vm(vrnetlab.VM):
 
     def bootstrap_spin(self):
         """This function should be called periodically to do work."""
-
-        (ridx, match, res) = self.con_expect([b"Login:", b"^[^ ]+#"])
-        if match:  # got a match!
-            if ridx == 0:  # matched login prompt, so should login
-                self.logger.debug("matched login prompt")
-                self.wait_write("admin", wait=None)
-                self.wait_write("admin", wait="Password:")
-            # run main config!
-            self.bootstrap_config()
-            # close telnet connection
+        global CP_BOOTSTRAP_DONE
+        if CP_BOOTSTRAP_DONE:
+            self.logger.debug(f"Slot {self.slot}: Bypassing bootstrap because was completed on peer CP.")
             self.scrapli_tn.close()
-            # calc startup time
-            startup_time = datetime.datetime.now() - self.start_time
-            self.logger.info("Startup complete in: %s" % startup_time)
             self.running = True
             return
+        else:
+            (ridx, match, res) = self.con_expect([b"Login:", b"^[^ ]+#"])
+            if match:  # got a match!
+                if ridx == 0:  # matched login prompt, so should login
+                    self.logger.debug("matched login prompt")
+                    self.wait_write("admin", wait=None)
+                    self.wait_write("admin", wait="Password:")
+                # run main config!
+                self.bootstrap_config()
+                # close telnet connection
+                self.scrapli_tn.close()
+                # calc startup time
+                startup_time = datetime.datetime.now() - self.start_time
+                self.logger.info("Startup complete in: %s" % startup_time)
+                self.running = True
+                CP_BOOTSTRAP_DONE = True
+                return
 
-        # no match, if we saw some output from the router it's probably
-        # booting, so let's give it some more time
-        if res != b"":
-            self.write_to_stdout(res)
-            # reset spins if we saw some output
-            self.spins = 0
+            # no match, if we saw some output from the router it's probably
+            # booting, so let's give it some more time
+            if res != b"":
+                self.logger.trace(f"OUTPUT SLOT {self.slot}: {res.decode()}")
+                # reset spins if we saw some output
+                self.spins = 0
 
-        self.spins += 1
+            self.spins += 1
 
-        return
+            return
 
     def read_license(self):
         """Read the license file, if it exists, and extract the UUID and start
@@ -1359,7 +1422,7 @@ class SROS_integrated(SROS_vm):
     ):
         ram: int = getMem("integrated", variant.get("min_ram"))
         cpu: int = getCpu("integrated", variant.get("cpu"))
-        slot: str = "A"
+        self.slot: str = "A"
 
         super().__init__(
             username,
@@ -1382,8 +1445,8 @@ class SROS_integrated(SROS_vm):
             ]
         else:
             self.smbios = [
-                f"type=1,product=TIMOS:address={SROS_MGMT_V4_ADDR}/{V4_PREFIX_LENGTH}@active "
-                f"address={SROS_MGMT_V6_ADDR}/{V6_PREFIX_LENGTH}@active license-file=tftp://{BRIDGE_V4_ADDR}/"
+                f"type=1,product=TIMOS:address={SROS_MGMT_V4_ADDR_ACTIVE}/{V4_PREFIX_LENGTH}@active "
+                f"address={SROS_MGMT_V6_ADDR_ACTIVE}/{V6_PREFIX_LENGTH}@active license-file=tftp://{BRIDGE_V4_ADDR}/"
                 f"license.txt primary-config=tftp://{BRIDGE_V4_ADDR}/config.txt system-base-mac={vrnetlab.gen_mac(0)} "
                 f"{variant['timos_line']}"
             ]
@@ -1395,7 +1458,7 @@ class SROS_integrated(SROS_vm):
         for cf in ["CF1", "CF2"]:
             if cf in os.environ:
                 disk_size = os.getenv(cf)
-                self.attach_cf(slot=slot, cfname=cf, size=disk_size)
+                self.attach_cf(cfname=cf, size=disk_size)
 
     def gen_mgmt(self):
         """
@@ -1445,13 +1508,18 @@ class SROS_integrated(SROS_vm):
 class SROS_cp(SROS_vm):
     """Control plane for distributed VSR-SIM"""
 
-    def __init__(self, hostname, username, password, mode, variant, conn_mode):
+    def __init__(self, hostname, username, password, mode, variant, conn_mode, cp_config, system_mac):
         # cp - control plane. role is used to create a separate overlay image name
         self.role = "cp"
+         
+        ram: int = getMem(self.role, cp_config.get("min_ram"))
+        cpu: int = getCpu(self.role, cp_config.get("cpu"))
+        self.slot: str = cp_config.get("slot")
 
-        ram: int = getMem(self.role, variant.get("cp").get("min_ram"))
-        cpu: int = getCpu(self.role, variant.get("cp").get("cpu"))
-        slot: str = variant.get("cp").get("slot")
+        #by default slot A is vm num=0. If B, set vm num=99 to avoid conflict with LC slots.
+        vm_num = 0
+        if self.slot == "B":
+            vm_num = 99
 
         super(SROS_cp, self).__init__(
             username,
@@ -1459,26 +1527,30 @@ class SROS_cp(SROS_vm):
             cpu=cpu,
             ram=ram,
             conn_mode=conn_mode,
+            num=vm_num,
         )
         self.mode = mode
         self.num_nics = 0
         self.hostname = hostname
         self.variant = variant
+        self.vcpintf_fabric = f"vcp{self.slot}-int"
+        self.vcpintf_mgmt = f"vcp{self.slot}-mgmt"
         if self.mgmt_passthrough:
             self.smbios = [
                 f"type=1,product=TIMOS:address={self.mgmt_address_ipv4}@active "
                 f"address={self.mgmt_address_ipv6}@active "
                 f"license-file=tftp://{self.mgmt_gw_ipv4}/"
-                f"license.txt primary-config=tftp://{self.mgmt_gw_ipv4}/config.txt system-base-mac={vrnetlab.gen_mac(0)} "
-                f"{variant['cp']['timos_line']}"
+                f"license.txt primary-config=tftp://{self.mgmt_gw_ipv4}/config.txt system-base-mac={system_mac} "
+                f"{cp_config['timos_line']}"
             ]
-        else:
+        else:        
             self.smbios = [
-                f"type=1,product=TIMOS:address={SROS_MGMT_V4_ADDR}/{V4_PREFIX_LENGTH}@active "
-                f"address={SROS_MGMT_V6_ADDR}/{V6_PREFIX_LENGTH}@active "
+                f"type=1,product=TIMOS:address={SROS_MGMT_V4_ADDR_ACTIVE}/{V4_PREFIX_LENGTH}@active address={SROS_MGMT_V4_ADDR_STANDBY}/{V4_PREFIX_LENGTH}@standby "
+                f"address={SROS_MGMT_V6_ADDR_ACTIVE}/{V6_PREFIX_LENGTH}@active "
+                f"address={SROS_MGMT_V6_ADDR_STANDBY}/{V6_PREFIX_LENGTH}@standby "
                 f"license-file=tftp://{BRIDGE_V4_ADDR}/license.txt "
                 f"primary-config=tftp://{BRIDGE_V4_ADDR}/config.txt "
-                f"system-base-mac={vrnetlab.gen_mac(0)} {variant['cp']['timos_line']}"
+                f"system-base-mac={system_mac} {cp_config['timos_line']}"
             ]
         self.logger.info("Acting timos line: {}".format(self.smbios))
 
@@ -1486,15 +1558,20 @@ class SROS_cp(SROS_vm):
         for cf in ["CF1", "CF2"]:
             if cf in os.environ:
                 disk_size = os.getenv(cf)
-                self.attach_cf(slot=slot, cfname=cf, size=disk_size)
+                self.attach_cf(cfname=cf, size=disk_size)
 
     def start(self):
         # use parent class start() function
         super(SROS_cp, self).start()
-        # add interface to internal control plane bridge
-        vrnetlab.run_command(["brctl", "addif", "int_cp", "vcp-int"])
-        vrnetlab.run_command(["ip", "link", "set", "vcp-int", "up"])
-        vrnetlab.run_command(["ip", "link", "set", "dev", "vcp-int", "mtu", "10000"])
+        # add fabric interface to internal control plane bridge
+        vrnetlab.run_command(["brctl", "addif", "int_cp", self.vcpintf_fabric])
+        vrnetlab.run_command(["ip", "link", "set", self.vcpintf_fabric, "up"])
+        vrnetlab.run_command(["ip", "link", "set", "dev", self.vcpintf_fabric, "mtu", "10000"])
+
+        # add mgmt interface to mgmt bridge if not in mgmt_passthrough
+        if not self.mgmt_passthrough:
+            vrnetlab.run_command(["brctl", "addif", "br-mgmt", self.vcpintf_mgmt])
+            vrnetlab.run_command(["ip", "link", "set", self.vcpintf_mgmt, "up"])
 
     def gen_nics(self):
         """
@@ -1509,6 +1586,7 @@ class SROS_cp(SROS_vm):
         """
         res = []
 
+        # add virtio NIC for mgmt control plane
         self.mgmt_mac = self.get_mgmt_mac()
 
         if self.mgmt_passthrough:
@@ -1523,16 +1601,16 @@ class SROS_cp(SROS_vm):
             res.append("-device")
 
             res.append(
-                self.nic_type + ",netdev=br-mgmt,mac=%(mac)s" % {"mac": self.mgmt_mac}
+                f"{self.nic_type},netdev={self.vcpintf_mgmt},mac={self.mgmt_mac}"
             )
             res.append("-netdev")
-            res.append("bridge,br=br-mgmt,id=br-mgmt")
+            res.append(f"tap,ifname={self.vcpintf_mgmt},id={self.vcpintf_mgmt},script=no,downscript=no")
 
         # add virtio NIC for internal control plane interface to vFPC
         res.append("-device")
-        res.append("virtio-net-pci,netdev=vcp-int,mac=%s" % vrnetlab.gen_mac(1))
+        res.append(f"virtio-net-pci,netdev={self.vcpintf_fabric},mac={vrnetlab.gen_mac(1)}")
         res.append("-netdev")
-        res.append("tap,ifname=vcp-int,id=vcp-int,script=no,downscript=no")
+        res.append(f"tap,ifname={self.vcpintf_fabric},id={self.vcpintf_fabric},script=no,downscript=no")
         return res
 
 
@@ -1611,26 +1689,12 @@ class SROS(vrnetlab.VR):
         username,
         password,
         mode,
-        variant_name,
+        variant,
         conn_mode,
         mgmt_passthrough,
     ):
         super().__init__(username, password, mgmt_passthrough)
-
-        if variant_name.lower() in SROS_VARIANTS:
-            variant = SROS_VARIANTS[variant_name.lower()]
-
-            if variant.get("lcs", None):
-                variant["lcs"] = [
-                    parse_variant_line(lc.get("timos_line", ""), lc)
-                    for lc in variant["lcs"]
-                ]
-                variant["cp"] = parse_variant_line(
-                    variant["cp"]["timos_line"], variant["cp"]
-                )
-        else:
-            variant = parse_custom_variant(variant_name)
-
+        global SROS_VARIANT_NAME
         self.extractVersion()
         self.processFiles()
 
@@ -1647,7 +1711,7 @@ class SROS(vrnetlab.VR):
             sys.exit(1)
 
         self.logger.debug("Raw SR OS variant: " + str(variant))
-        self.logger.info("SR OS Variant: " + variant_name)
+        self.logger.info("SR OS Variant: " + SROS_VARIANT_NAME)
         self.logger.info(f"Number of NICs: {variant['max_nics']}")
         self.logger.info("Configuration mode: " + str(mode))
 
@@ -1656,17 +1720,44 @@ class SROS(vrnetlab.VR):
             self.setupMgmtBridge()
 
         if variant["deployment_model"] == "distributed":
+            self.vms = []
             # CP VM instantiation
-            self.vms = [
-                SROS_cp(
-                    hostname,
-                    username,
-                    password,
-                    mode,
-                    variant,
-                    conn_mode,
+            cp_slot_tracker = []
+            sys_mac = vrnetlab.gen_mac(0)
+            for cp in variant["cps"]:
+                cp_slot=cp.get("slot", None)
+
+                # cp_slot sanity checks
+                if not cp_slot:
+                    self.logger.warning(
+                        f"No Slot information on following cp line defintion: {cp}"
+                        "Skip CP VM creation"
+                    )
+                    continue
+                if cp_slot in cp_slot_tracker:
+                    self.logger.warning(
+                        f"Found duplicate slot: {cp} Skip CP VM creation"
+                    )
+                    continue
+                
+                if cp_slot not in ['A','B']:
+                    self.logger.warning(
+                        f"slot value format is not valid: {cp} Skip CP VM creation"
+                    )
+                    continue
+
+                self.vms.append(SROS_cp(
+                        hostname,
+                        username,
+                        password,
+                        mode,
+                        variant,
+                        conn_mode,
+                        cp_config=cp,
+                        system_mac=sys_mac
+                    )
                 )
-            ]
+                
 
             # LC VM Instantiation
             start_eth = 1
@@ -1851,13 +1942,41 @@ if __name__ == "__main__":
     if args.trace:
         logger.setLevel(1)
 
+    SROS_VARIANT_NAME = args.variant
+    if SROS_VARIANT_NAME.lower() in SROS_VARIANTS:
+        variant = SROS_VARIANTS[SROS_VARIANT_NAME.lower()]
+
+        if variant.get("lcs", None):
+            variant["lcs"] = [
+                parse_variant_line(lc.get("timos_line", ""), lc)
+                for lc in variant["lcs"]
+            ]
+        if variant.get("cps", None):
+            if SROS_DUALCP and len(variant["cps"])<2:
+                cpb = variant["cps"][0].copy()
+                cpb['timos_line']=cpb['timos_line'].replace('slot=A','slot=B')
+                variant["cps"].append(cpb)
+            variant["cps"] = [
+                parse_variant_line(cp.get("timos_line", ""), cp)
+                for cp in variant["cps"]
+            ]
+        
+    else:
+        variant = parse_custom_variant(SROS_VARIANT_NAME)
+        if len(variant['cps'])>1:
+            SROS_DUALCP = True
+
     # set management interface mode to pass-through or host-forwarded
     # host-forwarded is the original vrnetlab mode where SR OS gets a static IP for its bof address,
     # which does not match the eth0 interface of a container.
     # In pass-through mode the SR OS container uses the same IP as the container's eth0 interface and transparently forwards traffic between the two interfaces.
+    # if it's a dual-cp deployment, disable mgmt_passthrough (both features interoperation not implemented)
     mgmt_passthrough = False
-    if os.getenv("CLAB_MGMT_PASSTHROUGH", "").lower() == "true":
+    if os.getenv("CLAB_MGMT_PASSTHROUGH", "").lower() == "true" and not SROS_DUALCP:
         mgmt_passthrough = True
+    elif os.getenv("CLAB_MGMT_PASSTHROUGH", "").lower() == "true":
+        os.environ["CLAB_MGMT_PASSTHROUGH"] = "false"
+        logger.warning(f"CLAB_MGMT_PASSTHROUGH disabled due to incompatibility with dual-cp deployment")
 
     # In host-forwarded mode the container runs a tftp server in the root namespace of the container.
     if not mgmt_passthrough:
@@ -1885,19 +2004,19 @@ if __name__ == "__main__":
         # thus we need to forward connections to a different address
         vrnetlab.run_command(["pkill", "socat"])
 
-        # redirecting incoming tcp traffic (except serial port 5000) from eth0 to SR management interface
+        # redirecting incoming tcp traffic (except serial port range) from eth0 to SR management interface
         vrnetlab.run_command(
-            f"iptables-nft -t nat -A PREROUTING -i eth0 -p tcp ! --dport 5000 -j DNAT --to-destination {SROS_MGMT_V4_ADDR}".split()
+            f"iptables-nft -t nat -A PREROUTING -i eth0 -p tcp ! --dport 5000:5099 -j DNAT --to-destination {SROS_MGMT_V4_ADDR_ACTIVE}".split()
         )
         vrnetlab.run_command(
-            f"ip6tables-nft -t nat -A PREROUTING -i eth0 -p tcp ! --dport 5000 -j DNAT --to-destination {SROS_MGMT_V6_ADDR}".split()
+            f"ip6tables-nft -t nat -A PREROUTING -i eth0 -p tcp ! --dport 5000:5099 -j DNAT --to-destination {SROS_MGMT_V6_ADDR_ACTIVE}".split()
         )
         # same redirection but for UDP
         vrnetlab.run_command(
-            f"iptables-nft -t nat -A PREROUTING -i eth0 -p udp -j DNAT --to-destination {SROS_MGMT_V4_ADDR}".split()
+            f"iptables-nft -t nat -A PREROUTING -i eth0 -p udp -j DNAT --to-destination {SROS_MGMT_V4_ADDR_ACTIVE}".split()
         )
         vrnetlab.run_command(
-            f"ip6tables-nft -t nat -A PREROUTING -i eth0 -p udp -j DNAT --to-destination {SROS_MGMT_V6_ADDR}".split()
+            f"ip6tables-nft -t nat -A PREROUTING -i eth0 -p udp -j DNAT --to-destination {SROS_MGMT_V6_ADDR_ACTIVE}".split()
         )
         # masquerading the incoming traffic so SR OS is able to reply back
         vrnetlab.run_command(
@@ -1974,11 +2093,11 @@ if __name__ == "__main__":
         args.username,
         args.password,
         mode=args.mode,
-        variant_name=args.variant,
+        variant=variant,
         conn_mode=args.connection_mode,
         mgmt_passthrough=mgmt_passthrough,
     )
     ia.logger.debug(
-        f"acting flags: username '{args.username}', password '{args.password}', connection-mode '{args.connection_mode}', variant '{args.variant}'"
+        f"acting flags: username '{args.username}', password '{args.password}', connection-mode '{args.connection_mode}', variant '{SROS_VARIANT_NAME}'"
     )
     ia.start()
