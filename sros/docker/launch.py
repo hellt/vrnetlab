@@ -106,7 +106,6 @@ SROS_VERSION = SROSVersion(version="", major=0, minor=0, patch=0, magc=False)
 #Once bootstrap completes on the Active CP VM, this global variable will be set to true so that Standby CP VM can abort the bootstrap process.
 CP_BOOTSTRAP_DONE = False 
 
-
 # line_card_config is a convenience function that generates line card definition strings
 def line_card_config(
     chassis: str, card: str, mda: str, integrated: bool = False, card_type: str = None
