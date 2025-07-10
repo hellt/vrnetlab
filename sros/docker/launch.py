@@ -103,13 +103,6 @@ class SROSVersion:
 # SROS_VERSION global variable is used to store the SROS version components
 SROS_VERSION = SROSVersion(version="", major=0, minor=0, patch=0, magc=False)
 
-#SROS_DUALCP global variable is used to signal if two CPMs are desired when a pre-packaged SROS variant is selected
-SROS_DUALCP = (
-            os.environ.get("DUAL_CP", "").lower() == "true"
-            if os.environ.get("DUAL_CP")
-            else False
-        )
-
 #Once bootstrap completes on the Active CP VM, this global variable will be set to true so that Standby CP VM can abort the bootstrap process.
 CP_BOOTSTRAP_DONE = False 
 
@@ -1714,6 +1707,7 @@ class SROS(vrnetlab.VR):
         self.logger.info("SR OS Variant: " + SROS_VARIANT_NAME)
         self.logger.info(f"Number of NICs: {variant['max_nics']}")
         self.logger.info("Configuration mode: " + str(mode))
+        self.logger.info("Dual-CPM deployment: " + str(SROS_DUALCP))
 
         # if we are in host-forwarded then we need to create Mgmt bridge
         if not self.mgmt_passthrough:
@@ -1952,7 +1946,7 @@ if __name__ == "__main__":
                 for lc in variant["lcs"]
             ]
         if variant.get("cps", None):
-            if SROS_DUALCP and len(variant["cps"])<2:
+            if os.getenv("DUAL_CP", "").lower() == "true" and len(variant["cps"])<2:
                 cpb = variant["cps"][0].copy()
                 cpb['timos_line']=cpb['timos_line'].replace('slot=A','slot=B')
                 variant["cps"].append(cpb)
@@ -1963,9 +1957,11 @@ if __name__ == "__main__":
         
     else:
         variant = parse_custom_variant(SROS_VARIANT_NAME)
-        if variant.get("cps", None):
-            if len(variant['cps'])>1:
-                SROS_DUALCP = True
+    
+    SROS_DUALCP =  False
+    if variant.get("cps", None):
+        if len(variant['cps'])>1:
+            SROS_DUALCP = True
 
     # set management interface mode to pass-through or host-forwarded
     # host-forwarded is the original vrnetlab mode where SR OS gets a static IP for its bof address,
