@@ -1963,8 +1963,9 @@ if __name__ == "__main__":
         
     else:
         variant = parse_custom_variant(SROS_VARIANT_NAME)
-        if len(variant['cps'])>1:
-            SROS_DUALCP = True
+        if variant.get("cps", None):
+            if len(variant['cps'])>1:
+                SROS_DUALCP = True
 
     # set management interface mode to pass-through or host-forwarded
     # host-forwarded is the original vrnetlab mode where SR OS gets a static IP for its bof address,
