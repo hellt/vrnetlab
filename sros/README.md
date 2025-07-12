@@ -80,9 +80,9 @@ Custom variants WILL NOT have cards/mda auto-configured, user needs to configure
 
 ## Dual CPM
 
-Two CPMs can be deployed on variants that operate in distributed-mode:
+Among the vSIM chassis types that operate in the distributed model, some support deployment with two CPMs to simulate a redundant environment. The following methods can be used to deploy such a node:
 
-- For pre-packaged variants, set the environment variable `DUAL_CP="true"`. If the selected variant operates in distributed-mode, vrnetlab will automatically add a CPM-B; otherwise, it will be ignored.
+- For pre-packaged variants, set the environment variable `DUAL_CP="true"`. If the selected variant operates in the distributed model, vrnetlab will automatically add a CPM-B; otherwise, it will be ignored.
 ```bash
     node1:
       env:
@@ -102,7 +102,9 @@ Two CPMs can be deployed on variants that operate in distributed-mode:
         lc: cpu=2 ram=4 max_nics=34 chassis=sr-1e slot=1 card=iom-e mda/1=me40-1gb-csfp
 ```
 
-NOTE: **Transparent Management** is not currently supported with dual-CPM deployments.
+NOTE: 
+ - **Transparent Management** is not currently supported with dual-CPM deployments.
+ - Make sure the selected chassis type supports two CPMs. The node may fail to boot properly otherwise.
 
 ## Additional CFs
 
