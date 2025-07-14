@@ -98,6 +98,23 @@ NOSes defaulting to _host-forwarded_ management interfaces are:
 
 It is possible to change from the default management interface mode by setting the `CLAB_MGMT_PASSTHROUGH` environment variable to 'true' or 'false', however, it is left up to the user to provide a startup configuration compatible with the requested mode.
 
+## Resetting Virtual Routers
+
+You can force-reset all or a subset of VR component VMs by creating a file named `reset` in the root path (`/`) of the container. This triggers a qemu-monitor `system_reset` command to the specified VM(s), which acts like a hardware reset button without disrupting existing qemu VM properties (interfaces, disks...). Useful for recovering VMs in a hung state or for testing scenarios.
+
+ - To reset the VR (all component VMs), create an empty `/reset` file.
+ - To reset a subset of the VR VMs, write a comma-separated list of VM numbers to the `/reset` file.
+
+Usage examples:
+```bash
+sudo docker exec container_name_or_id touch /reset #reset VR (all component VMs)
+sudo docker exec container_name_or_id sh -c 'echo "0" > /reset' #reset VM 0
+sudo docker exec container_name_or_id sh -c 'echo "1,2" > /reset' #reset VM 1 & VM 2
+```
+
+> **Note:**  
+> VM numbers correspond to the internal numbering used by vrnetlab (typically starting from 0).
+
 ## Which vrnetlab routers are supported?
 
 Since the changes we made in this fork are VM specific, we added a few popular
