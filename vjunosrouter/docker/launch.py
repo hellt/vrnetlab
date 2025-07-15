@@ -96,7 +96,7 @@ class VJUNOSROUTER_vm(vrnetlab.VM):
         self.qemu_args.extend(["-no-user-config", "-nodefaults", "-boot", "strict=on"])
         self.nic_type = "virtio-net-pci"
         # 1 management port + 12 front ports to match vJunosEvolved
-        self.num_nics = 13
+        self.num_nics = 96
         self.smbios = ["type=1,product=VM-VMX,family=lab"]
         self.conn_mode = conn_mode
 
