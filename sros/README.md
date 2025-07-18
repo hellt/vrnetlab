@@ -78,7 +78,35 @@ cp: cpu=2 ram=4 chassis=ixr-e slot=A card=cpm-ixr-e ___ lc: cpu=2 ram=4 max_nics
 
 Custom variants WILL NOT have cards/mda auto-configured, user needs to configure those manually once the node finishes boot process.
 
-### Additional CFs
+## Dual CPM
+
+Among the vSIM chassis types that operate in the distributed model, some support deployment with two CPMs to simulate a redundant environment. The following methods can be used to deploy such a node:
+
+- For pre-packaged variants, set the environment variable `DUAL_CP="true"`. If the selected variant operates in the distributed model, vrnetlab will automatically add a CPM-B; otherwise, it will be ignored.
+```bash
+    node1:
+      env:
+        DUAL_CP: "true"
+      kind: nokia_sros
+      image: vrnetlab/nokia_sros:23.10.R6
+      type: sr-1e
+```
+- For custom variants, use 2 `cp:` lines.
+```bash
+    node1:
+      kind: nokia_sros
+      image: vrnetlab/nokia_sros:23.10.R6
+      type: >- 
+        cp: cpu=2 ram=4 chassis=sr-1e slot=A card=cpm-e ___
+        cp: cpu=2 ram=4 chassis=sr-1e slot=B card=cpm-e ___
+        lc: cpu=2 ram=4 max_nics=34 chassis=sr-1e slot=1 card=iom-e mda/1=me40-1gb-csfp
+```
+
+NOTE: 
+ - **Transparent Management** is not currently supported with dual-CPM deployments.
+ - Make sure the selected chassis type supports two CPMs. The node may fail to boot properly otherwise.
+
+## Additional CFs
 
 Additional Compact Flash disks (CFs) can be added via `CFX=SIZE` ENV VARs, where
 
@@ -87,11 +115,11 @@ Additional Compact Flash disks (CFs) can be added via `CFX=SIZE` ENV VARs, where
 
 ```bash
 r01:
-      env:
-        CF2: 2G
-        CF1: 2G
-      type: sr-1
-      kind: nokia_sros
+  env:
+    CF2: 2G
+    CF1: 2G
+  type: sr-1
+  kind: nokia_sros
 ```
 
 Disk(s) are created in the by the `<clab-dir>/<node-name>/tftpboot/` path with a filename `cfX_SLOT.qcow2`. If disk file already exists it is reused without any modification.
@@ -106,6 +134,13 @@ r01/
 ```
 
 NOTE: If only CF2 is provisioned, node will remap it to CF1.
+
+## Console access
+
+Telnet ports in the range 50XX are reserved for VM consoles:
+* Port 5000 -> CPM A
+* Port 5099 -> CPM B
+* Ports 5001 to 5098 -> Line Cards
 
 ## Usage with containerlab
 
