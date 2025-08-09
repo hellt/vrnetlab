@@ -152,6 +152,7 @@ class VQFX_vcp(vrnetlab.VM):
         self.wait_write("delete interfaces")
         self.wait_write("set interfaces em0 unit 0 family inet address 10.0.0.15/24")
         self.wait_write("set interfaces em1 unit 0 family inet address 169.254.0.2/24")
+        self.wait_write("set routing-options static route 0.0.0.0/0 next-hop 10.0.0.2")
         self.wait_write(f"set system host-name {self.hostname}")
         self.wait_write("commit")
         self.wait_write("exit")
