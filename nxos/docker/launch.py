@@ -55,6 +55,7 @@ class NXOS_vm(vrnetlab.VM):
         self.credentials = [["admin", "admin"]]
         self.hostname = hostname
         self.conn_mode = conn_mode
+        self.num_nics = 32
 
     def bootstrap_spin(self):
         """This function should be called periodically to do work."""
