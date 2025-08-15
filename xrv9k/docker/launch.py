@@ -6,7 +6,6 @@ import os
 import re
 import signal
 import sys
-import time
 
 import vrnetlab
 from scrapli.driver.core import IOSXRDriver
@@ -55,6 +54,17 @@ class XRv9k_vm(vrnetlab.VM):
             smp=f"cores={vcpu},threads=1,sockets=1",
             use_scrapli=True,
         )
+        
+        # extract version num
+        version = ""
+
+        try:
+            version = self.version
+        except: #noqa: E722
+            version = re.search(r"\d+(?:\.\d+)+", self.image).group(0)
+        
+        self.version_major = int(version.split(".")[0])
+
         self.hostname = hostname
         self.conn_mode = conn_mode
         self.num_nics = nics
@@ -226,18 +236,20 @@ root
         self.scrapli_tn.close()
 
         with IOSXRDriver(**xrv9k_scrapli_dev) as con:
-            # Configure SSH keys
-            con.send_interactive(
-                [
-                    (
-                        "crypto key generate rsa",
-                        "How many bits in the modulus [2048]",
-                        False,
-                    ),
-                    ("4096", "#", True),
-                ]
-            )
-            con.send_command("crypto key generate ecdsa nistp521")
+            if self.version_major < 7:
+                # Configure SSH keys
+                con.send_interactive(
+                    [
+                        (
+                            "crypto key generate rsa",
+                            "How many bits in the modulus [2048]",
+                            False,
+                        ),
+                        ("4096", "#", True),
+                    ]
+                )
+                con.send_command("crypto key generate ecdsa nistp521")
+
             res = con.send_configs(xrv9k_config.splitlines())
             res += con.send_configs(["commit best-effort label CLAB_BOOTSTRAP", "end"])
 
