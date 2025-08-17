@@ -172,7 +172,7 @@ class VM:
         self._ram = ram
         self._cpu = cpu
         self._smp = smp
-        self.mgmt_intf = os.environ.get("CLAB_MGMT_INTF", "eth0")
+        self.mgmt_intf = os.environ.get("CLAB_MGMT_INTF", mgmt_intf)
 
         # various settings
         self.uuid = None
@@ -204,7 +204,7 @@ class VM:
         )
 
         # Check if CLAB_INTF_PREFIX environment variable is set
-        self.data_intf_prefix = os.environ.get("CLAB_INTF_PREFIX", "eth")
+        self.data_intf_prefix = os.environ.get("CLAB_INTF_PREFIX", data_intf_prefix)
 
         # Populate management IP and gateway
         # If CLAB_MGMT_DHCP environment variable is set, we assume that a DHCP client
@@ -469,12 +469,6 @@ class VM:
         tc qdisc add dev {MGMT_INTF} clsact
         # exception for TCP ports 5000-5007
         tc filter add dev {MGMT_INTF} ingress prio 1 protocol ip flower ip_proto tcp dst_port 5000-5007 action pass
-        # exception for TCP ports 50123 50128
-        tc filter add dev {MGMT_INTF} ingress prio 1 protocol ip flower ip_proto tcp dst_port 50123 action pass
-        tc filter add dev {MGMT_INTF} ingress prio 1 protocol ip flower ip_proto tcp src_port 50123 action pass
-        # exception for TCP ports 50128
-        tc filter add dev {MGMT_INTF} ingress prio 1 protocol ip flower ip_proto tcp dst_port 50128 action pass
-        tc filter add dev {MGMT_INTF} ingress prio 1 protocol ip flower ip_proto tcp src_port 50128 action pass
         # mirror ARP traffic to container
         tc filter add dev {MGMT_INTF} ingress prio 2 protocol arp flower action mirred egress mirror dev tap0
         # redirect rest of ingress traffic of eth0 to egress of tap0

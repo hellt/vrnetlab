@@ -1,4 +1,4 @@
-FROM ghcr.io/srl-labs/vrnetlab-base:0.1.0
+FROM ghcr.io/srl-labs/vrnetlab-base:0.2.1
 
 RUN apt-get update -qy \
    && apt-get install -y --no-install-recommends \
