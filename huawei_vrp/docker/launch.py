@@ -57,14 +57,16 @@ class VRP_vm(vrnetlab.VM):
                 if m:
                     self.vm_version = m.group(1)
 
-        # default values which will be used when there is no match
+        # default RAM und CPU values which will be used when there is no match from qcow image name
         ram = 4096
         smp = "4"
 
-        # override depending on version
+        # override depending on version found in qcow image name
+        # R22 requires 8G and 8 CPU
         if self.vm_version == "V800R022":
             ram = 8192
             smp = "8"
+        # R23 and R11 require 4G and 2 CPU (for sure more is better)
         elif self.vm_version in ["V800R023", "V800R011"]:
             ram = 4096
             smp = "2"
@@ -78,7 +80,7 @@ class VRP_vm(vrnetlab.VM):
             driveif="virtio",
         )
 
-        # Add SATA controller and disk attachment (this is probably not needed but doesn't hurt either)
+        # Ex-Configuration for machine type and SATA controller tests (this is probably not needed but doesn't hurt either)
         self.qemu_args.extend([
             "-machine", "pc-q35-6.2",  # Use q35 machine type for better SATA support
         ])
@@ -159,6 +161,7 @@ class VRP_vm(vrnetlab.VM):
 
     def bootstrap_mgmt_interface(self):
         # wait for system to become ready for configuration
+        # otherwise we might see Error: The system is busy in building configuration. Please wait for a moment...
         self.logger.info("bootstrap_mgmt_interface - Sleeping for another 60s to wait for the system to become ready...()")
         time.sleep(60)
         self.wait_write(cmd="mmi-mode enable", wait=None)
@@ -172,7 +175,6 @@ class VRP_vm(vrnetlab.VM):
         if self.vm_type == "NE40E":
             mgmt_interface = "GigabitEthernet"
         self.wait_write(cmd=f"interface {mgmt_interface} 0/0/0", wait="]")
-        # Error: The system is busy in building configuration. Please wait for a moment...
         while True:
             self.wait_write(cmd="clear configuration this", wait=None)
             (idx, match, res) = self.tn.expect([rb"Error"], 1)
@@ -289,7 +291,8 @@ class VRP_vm(vrnetlab.VM):
         self.wait_write(cmd="quit", wait="]")
         # if we do not commit we will not see the ">", with mmi-mode enable the system automatically commits when leaving system-view
         #self.wait_write(cmd="save", wait=">")
-        time.sleep(5)
+        # Under heavy load commit might take some seconds. Better give some more time to wait for commit to complete.
+        time.sleep(15)
         #self.wait_write(cmd="undo mmi-mode enable", wait=">")
 
 
