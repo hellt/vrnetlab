@@ -32,7 +32,13 @@ docker-build-common: docker-clean-build docker-pre-build
 ifeq ($(DONT_COPY_COMMON), 1)
 	echo "Don't need to copy common assets"
 else
-	cp ../common/* docker/
+	@if [ -d ../common ]; then \
+		cp ../common/* docker/; \
+	elif [ -d ../../common ]; then \
+		cp ../../common/* docker/; \
+	else \
+		echo "ERROR: Cannot find common directory"; exit 1; \
+	fi
 endif
 	@[ -f ./vswitch.xml ] && cp vswitch.xml docker/ || true
 	$(MAKE) IMAGE=$$IMAGE docker-build-image-copy
